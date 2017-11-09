@@ -7,20 +7,25 @@ import sys
 import os
 import hashlib
 import yaml
+import copy
 
 def find_files(pattern, path):
-    result = []
-    for root, dirs, files in os.walk(path):
-        for name in files:
-            if fnmatch.fnmatch(name, pattern):
-                result.append(os.path.join(root, name))
-    return result
+   result = []
+   for root, dirs, files in os.walk(path):
+      if path != root:
+         continue
+      for name in files:
+         if fnmatch.fnmatch(name, pattern):
+            result.append(os.path.join(root, name))
+   return result
  
 def find_file(name, path):
-    for root, dirs, files in os.walk(path):
-        if name in files:
-            return os.path.join(root, name)
-    return None
+   for root, dirs, files in os.walk(path):
+      if path != root:
+         continue
+      if name in files:
+         return os.path.join(root, name)
+   return None
  
 external_specification_subdir_name  = "__external__"
 test_trigger_basename               = "__test__"
@@ -34,16 +39,16 @@ test_specification_basename         = "specification.yaml"
 # Entities can either store data by themselfs, which is the 
 # case if they represent an entity that overrides a
 # parent entity, or they can reference an entity
-# that was defined on a parent level of the directory
+# that was defined on a parent level of the path
 # structure and was not overridden.
 #
 class Entity(object):
    
    def __init__(self):
-      self.directory = None
+      self.path = None
    
-   def attach(self, directory):
-      self.directory = .name
+   def attach(self, path):
+      self.path = path.path
 
 class File(Entity):
 
@@ -54,8 +59,11 @@ class File(Entity):
    def __eq__(self, other):
     return self.filename == other.filename
 
-class PythonDriver(File)
-class ArduinoSketch(File)
+class PythonDriver(File):
+   pass
+
+class FirmwareSketch(File):
+   pass
        
 # A property represents any information that
 # was collected from the yaml specification. 
@@ -91,17 +99,16 @@ class KaleidoscopeModule(object):
       self.name = None
       
    # To be able to define a module and its purpose
-   # exactly, we compute a sha256 identifier
+   # exactly, we compute a digest of its content
    #
-   def getSha256(self):
+   def getDigest(self):
       
       m = hashlib.sha256()
       m.update(self.url)
       m.update(self.commit)
       m.update(self.name)
-      m.digest()
       
-      return m
+      return m.hexdigest()
     
 class FirmwareBuild(Entity):
 
@@ -109,24 +116,30 @@ class FirmwareBuild(Entity):
       
       if parent_build:
          self.modules = parent_build.modules
-         self.SHAs = parent_build.SHAs
+         self.digests = parent_build.digests
          self.firmware_sketch = parent_build.firmware_sketch
       else:
-         self.modules = None
-         self.SHAs = None
+         self.modules = []
+         self.digests = []
          self.firmware_sketch = None
+         
+   def checkValidity(self):
+      if not self.firmware_sketch:
+         return False
+      
+      return True
    
    def containsModule(self, new_module):
           
-      new_sha = new_module.getSha256()
+      new_digest = new_module.getDigest()
 
-      # Check if a module with same sha is already present
+      # Check if a module with same digest is already present
       #
       try:
-         list_index = self.SHAs.index(new_sha)
+         list_index = self.digests.index(new_digest)
          
          # The fact that no exception has been thrown 
-         # indicates that the sha was found.
+         # indicates that a matching digest was found.
          
          # In this case, we do not need to take any 
          # action and just go with the parent list
@@ -135,6 +148,7 @@ class FirmwareBuild(Entity):
          return True
          
       except:
+         pass
          
       return False
    
@@ -143,10 +157,11 @@ class FirmwareBuild(Entity):
       new_self = FirmwareBuild(self)
       
       # This firmware build must be made unique.
-      # Therefore, make a shallow copy of modules and SHAs. 
+      # Therefore, make a shallow copy of modules and digests. 
       #
       new_self.new_modules = copy.copy(self.modules)
-      new_self.SHAs = copy.copy(self.SHAs)
+      new_self.digests = copy.copy(self.digests)
+      new_self.firmware_sketch = self.firmware_sketch
       
       return new_self
      
@@ -155,8 +170,10 @@ class FirmwareBuild(Entity):
       # If the new module does not define a name, just add it to the 
       # list of modules
       #
-      new_name = new_module.getName()
+      new_name = new_module.name
       do_append = True
+      
+      new_digest = new_module.getDigest()
       
       if new_name:
          
@@ -165,36 +182,36 @@ class FirmwareBuild(Entity):
          # module. If so, we replace it.
          #
          for i, module in enumerate(self.modules):
-            if module.getName() == new_name:
-               self.modules(i) = new_module
-               self.SHAs(i) = new_sha
+            if module.name == new_name:
+               self.modules[i] = new_module
+               self.digests[i] = new_digest
                do_append = False
                break
             
       if do_append:
          self.modules.append(new_module)
-         self.SHAs.append(new_sha)
+         self.digests.append(new_digest)
             
-   # Compute the sha of all modules. As the order of
-   # updating the overall sha is not commutative 
+   # Compute the digests of all modules. As the order of
+   # updating the overall digest is not commutative 
    # with respect to the members, we have to sort it first
    #
-   def getSha256(self):
+   def getDigest(self):
 
-      SHAs = []
+      digests = []
       for module in self.modules:
-         SHAs.append(module.getSha256())
+         digests.append(module.getDigest())
       
-      SHAs.sort()
+      digests.sort()
       
       m = hashlib.sha256()
       
-      for sha in SHAs:
-         m.update(sha)
+      for digest in digests:
+         m.update(str(digest))
          
-      m.update(self.firmware_build.filename)
+      m.update(self.firmware_sketch.filename)
          
-      return m
+      return m.hexdigest()
 
 class TestNode(object):
     
@@ -223,30 +240,57 @@ class TestNode(object):
       else:
          return self.name.value
       
-   def generatesTests(self)
+   def generatesTests(self):
       return self.is_test_target or (len(self.children) == 0)
    
-   def recursively_check_validity(self):
+   def recursivelyCheckValidity(self):
       
       is_valid = True
       
-      if self.generatesTests()
+      if self.generatesTests():
+      
+         #sys.stdout.write("A test node \"%s\" has %d children and is test_target: %d\n" % (self.path, len(self.children), self.is_test_target))
       
          if not self.path:
             is_valid = False
-            sys.stdout.write("A test node without a path definition was found\n")
+            sys.stdout.write(
+               "A test node without a path definition was found.\n")
                   
          if not self.name:
-            sys.stdout.write("A test node for path %s was found that does not feature a name\n")
+            is_valid = False
+            sys.stdout.write(
+               "A test node for path \"%s\" was found that does not "
+               "feature a name.\n" % (self.path))
          
          if not self.description:
-            sys.stdout.write("A test node for path %s was found that does not feature a description\n")
-         
+            is_valid = False
+            sys.stdout.write(
+               "A test node for path \"%s\" was found that does not "
+               "feature a description.\n" % (self.path))
+                  
+         if not self.python_driver:
+            is_valid = False
+            sys.stdout.write(
+               "A test node for path \"%s\" was found that does not "
+               "feature a python driver file (%s).\n" 
+                  % (self.path, test_driver_basename))
+            
          if not self.firmware_build:
-            sys.stdout.write("A test node for path %s was found that does not feature a firmware_build\n")
+            is_valid = False
+            sys.stdout.write(
+               "A test node for path \"%s\" was found that does not "
+               "feature a firmware build.\n" % (self.path))
+            
+         if not self.firmware_build.checkValidity():
+            is_valid = False
+            sys.stdout.write(
+               "A test node for path \"%s\" was found that does not "
+               "feature a firmware sketch (%s).\n" % (self.path, firmware_sketch_basename))
+            #sys.stdout.write("Node: " + str(id(self)) + "\n")
+            #sys.stdout.write("FB str: " + str(self.firmware_build) + "\n")
             
       for child in self.children:
-         is_valid &= child.recursively_check_validity()
+         is_valid &= child.recursivelyCheckValidity()
          
       return is_valid
       
@@ -261,7 +305,7 @@ class TestNode(object):
       
       # Defines if tests are supposed to be run on this level
       #
-      self.is_test_target = None
+      self.is_test_target = False
       
    def useParentEntity(self, name):
 
@@ -277,45 +321,41 @@ class TestNode(object):
          self.python_driver.attach(self)
          return
       
-      useParentEntity(python_driver)
+      self.useParentEntity("python_driver")
          
-   def findArduinoSketch(self, path):
+   def findFirmwareSketch(self, path):
       
-      arduino_sketch_file = find_file(firmware_sketch_basename, path)
+      firmware_sketch_file = find_file(firmware_sketch_basename, path)
       
-      if arduino_sketch_file:
+      if firmware_sketch_file:
          
-         if not self.needs_own_firmware_build:
-            
-            if not self.firmware_build.arduino_sketch.filename == arduino_sketch_file:
+         #sys.stdout.write("Sketch file %s found\n" % (firmware_sketch_file))
+         
+         if not self.firmware_build.firmware_sketch \
+               or not (self.firmware_build.firmware_sketch.filename \
+                              == firmware_sketch_file):
                
+            if not self.needs_own_firmware_build:
                self.cloneFirmwareBuild()
          
-         self.firmware_build.arduino_sketch = ArduinoSketch(arduino_sketch_file)
-         self.firmware_build.arduino_sketch.attach(self)
+            self.firmware_build.firmware_sketch \
+               = FirmwareSketch(firmware_sketch_file)
+            self.firmware_build.firmware_sketch.attach(self)
+         
+         #sys.stdout.write("Sketch file %s\n" % (self.firmware_build.firmware_sketch.filename))
          return
-      
-      useParentEntity(arduino_sketch)
       
    def findTestTrigger(self, path):
       
       test_trigger = find_file(test_trigger_basename, path)
       
       if test_trigger:
+         #sys.stdout.write("File %s in path %s found\n" % (test_trigger, path))
          self.is_test_target = True
-      else:
-         self.is_test_target = False
       
    def parseYAMLDefinitions(self, path):
       
       yaml_file = find_file(test_specification_basename, path)
-      
-      # Every entity that is not modified below, points
-      # to its parent 
-      #
-      useParentEntity(name)
-      useParentEntity(description)
-      useParentEntity(firmware_build)
       
       if not yaml_file:
          return
@@ -334,10 +374,6 @@ class TestNode(object):
       new_name = my_yaml.get("name") 
       if new_name:
          self.name = Property(new_name)
-         self.name.attach(self)
-      else:
-         path_basename = os.path.basename(path)
-         self.name = Property(path_basename)
          self.name.attach(self)
          
       new_despription = my_yaml.get("description") 
@@ -363,7 +399,7 @@ class TestNode(object):
             #
             if not self.firmware_build.containsModule(new_module):
                
-               # And this directory does not have its own set of
+               # And this path does not have its own set of
                # modules...
                #
                if not self.needs_own_firmware_build:
@@ -375,9 +411,15 @@ class TestNode(object):
                self.firmware_build.addModule(new_module)
                
    def cloneFirmwareBuild(self):
+      
+      #sys.stdout.write("Cloning firmware build at %s\n"
+         #% (self.path))
   
       self.firmware_build = self.firmware_build.clone()
+      self.firmware_build.path = self.path
       self.needs_own_firmware_build = True
+      
+      #sys.stdout.write("FB after clone: " + str(id(self.firmware_build)) + "\n")
                
    def setup(self):
       
@@ -386,12 +428,13 @@ class TestNode(object):
          self.needs_own_firmware_build = False
       else:
          self.firmware_build = FirmwareBuild()
+         self.firmware_build.path = self.path
          self.needs_own_firmware_build = True
       
-      # Check if there is a external reference to another subdirectory
-      # Such a subdirectory could, e.g. be a git submodule.
+      # Check if there is a external reference to another subpath
+      # Such a subpath could, e.g. be a git submodule.
       # If an external specification is found, anythin else
-      # in the directory is ignored.
+      # in the path is ignored.
       #
       external_specification_dir \
          = find_file(external_specification_subdir_name, self.path) 
@@ -400,12 +443,12 @@ class TestNode(object):
          
          if not os.path.isdir(external_specification_dir):
             
-            sys.exit("Directory \"" + self.path +
+            sys.exit("path \"" + self.path +
               "\" contains an external specification \"" +
               external_specification_subdir_name
-              + "\" that is not an directory.");
+              + "\" that is not an path.");
          
-         # If we found an external specfication directory, 
+         # If we found an external specfication path, 
          # check for any other files being present, 
          # appart from the test trigger file.
          # If so, we abort with an error.
@@ -415,18 +458,18 @@ class TestNode(object):
          trigger_wrong_files_error = False
          if len(all_files) > 2:
             trigger_wrong_files_error = True
-         else if len(all_files) == 2:
+         elif len(all_files) == 2:
             other_file_is_test_trigger = False
             if all_files(1) == test_trigger_basename:
                other_file_is_test_trigger = True
-            else if all_files(2) == test_trigger_basename:
+            elif all_files(2) == test_trigger_basename:
                other_file_is_test_trigger = True
                
             if not other_file_is_test_trigger:
                trigger_wrong_files_error = True
             
          if trigger_wrong_files_error:
-            sys.exit("Directory \"" + self.path +
+            sys.exit("path \"" + self.path +
               "\" contains an external specification \"" +
               external_specification_subdir_name
               + "\" and also additional files/directories appart from the test trigger (" + test_trigger_basename + "). "
@@ -436,21 +479,36 @@ class TestNode(object):
          source_path = external_specification_dir
       else:
          source_path = self.path
+            
+      # Every entity that is not modified below, points
+      # to its parent 
+      #
+      #self.useParentEntity("name")
+      self.useParentEntity("description")
+      self.useParentEntity("firmware_build")
        
-      # The source path is the directory that is searched
+      # The source path is the path that is searched
       # for test information. This can either be the current
-      # directory or the external test reference directory
+      # path or the external test reference path
       # determined above
       
       self.findPythonDriver(source_path)
-      self.findArduinoSketch(source_path)
+      self.findFirmwareSketch(source_path)
       self.parseYAMLDefinitions(source_path)
+      #sys.stdout.write("After setup\n")
+      #sys.stdout.write("   Node: " + str(id(self)) + "\n")
+      #sys.stdout.write("   FB str: " + str(self.firmware_build) + "\n")
       
-      # Look in the current directory for a TEST trigger file
+      # Look in the current path for a TEST trigger file
       #
       self.findTestTrigger(self.path)
-
-def setup_testing_tree(testing_tree_root)
+               
+      if not self.name:
+         path_basename = os.path.basename(self.path)
+         self.name = Property(path_basename)
+         self.name.attach(self)
+         
+def setup_testing_tree(testing_tree_root):
 
    # Every 
    
@@ -458,9 +516,9 @@ def setup_testing_tree(testing_tree_root)
    
    root_node = TestNode(testing_tree_root)
    
-   test_nodes_by_path.insert(testing_tree_root, root_node)
+   test_nodes_by_path[testing_tree_root] = root_node
    
-   # Recursively traverse the testing directory structure
+   # Recursively traverse the testing path structure
    # and establish a testing tree
    #
    for dirpath, dirs, files in os.walk(testing_tree_root):
@@ -486,13 +544,20 @@ def setup_testing_tree(testing_tree_root)
          if my_dir == external_specification_subdir_name:
             continue
          
-         new_test_node = TestNode(testing_tree_root, my_parent_dir)
+         my_abs_dir = os.path.join(dirpath, my_dir)
+         
+         new_test_node = TestNode(my_abs_dir, my_parent_test_node)
          
          my_parent_test_node.children.append(new_test_node)
          
-         test_nodes_by_path.insert(os.path.join(dirpath, my_dir), new_test_node)
+         test_nodes_by_path[my_abs_dir] = new_test_node
          
-   root_node.recursively_check_validity()
+   test_nodes_valid = root_node.recursivelyCheckValidity()
+   
+   if not test_nodes_valid:
+      
+      sys.exit("An invalid testing setup was detected. "
+         "Please correct any errors and start over.")
          
    return test_nodes_by_path
 
@@ -506,70 +571,73 @@ def check_test_name_uniqueness(test_nodes_by_path):
       
       if test_name in test_name_to_test_node.keys():
          
-         sys.exit("To tests in directories \"%s\" and \"%s\" that "
+         sys.exit("Two tests in directories \"%s\" and \"%s\" that "
             "have the same name \"%s\". Please ensure that all tests have individual names" % (test_node.path, test_name_to_test_node.get(test_name).path, test_name))
          
-      test_name_to_test_node.insert(test_name, test_node)
+      test_name_to_test_node[test_name] = test_node
 
-def determine_unique_firmware_builds(test_nodes_by_path)
+def determine_unique_firmware_builds(test_nodes_by_path):
 
    # Generate a unique set of firmware builds.
 
-   unique_firmware_builds_by_SHA = {}
+   unique_firmware_builds_by_digest = {}
 
+   set_id = 1
    for test_node in test_nodes_by_path.values():
       
-      if test_node.needs_own_firmware_build:
+      if test_node.generatesTests() and \
+            test_node.needs_own_firmware_build:
          
-         my_sha = test_node.firmware_build.getSha256()
+         my_digest = test_node.firmware_build.getDigest()
          
-         set_id = 1
-         if not my_sha in unique_firmware_builds_by_SHA.keys():
+         if not my_digest in unique_firmware_builds_by_digest.keys():
             test_node.firmware_build.set_id = set_id
-            unique_firmware_builds_by_SHA.insert(my_sha, test_node.firmware_build)
+            unique_firmware_builds_by_digest[my_digest] = test_node.firmware_build
             set_id = set_id + 1
             
    # Now replace references to modules with the unique versions
    #
    for test_node in test_nodes_by_path.values():
       
-      my_sha = test_node.firmware_build.getSha256()
+      my_digest = test_node.firmware_build.getDigest()
       
-      test_node.unique_modules = unique_firmware_builds_by_SHA.get(my_sha)
+      test_node.unique_firmware_build \
+         = unique_firmware_builds_by_digest.get(my_digest)
       
-   return unique_firmware_builds_by_SHA
+   return unique_firmware_builds_by_digest
       
 def sep_line(file):   
    file.write(
-"################################################################################")
+"################################################################################\n")
       
 def export_as_cmake(cmake_filename, 
                     test_nodes_by_path, 
-                    unique_firmware_builds_by_SHA):
+                    unique_firmware_builds_by_digest):
    
    cmake_file = open(cmake_filename, "w") 
    
    # First export the firmware builds 
    #
    sep_line(cmake_file)
-   cmake_file.write("Kaleidoscope firmware builds")
+   cmake_file.write("# Kaleidoscope firmware builds\n")
    sep_line(cmake_file)
    
-   for firmware_build in unique_firmware_builds_by_SHA:
-      cmake_file.write("kaleidoscope_firmware_build(")
-      cmake_file.write("   BUILD_ID \"" + firmware_build.set_id + "\"")
-      cmake_file.write("   ARDUINO_SKETCH \"" + firmware_build.arduino_sketch.filename + "\"")
+   for digest, firmware_build in unique_firmware_builds_by_digest.iteritems():
+      cmake_file.write("kaleidoscope_firmware_build(\n")
+      cmake_file.write("   BUILD_ID \"" + str(firmware_build.set_id) + "\"\n")
+      cmake_file.write("   DIGEST \"" + str(digest) + "\"\n")
+      cmake_file.write("   FIRMWARE_SKETCH \"" + firmware_build.firmware_sketch.filename + "\"\n")
       for mod in firmware_build.modules:
-         cmake_file.write("   URL \"" + mod.url + "\"")
-         cmake_file.write("   COMMIT \"" + mod.commit + "\"")
-         cmake_file.write("   NAME \"" + mod.name + "\"")
-      cmake_file.write(")")
-      cmake_file.write("")  
+         cmake_file.write("   URL \"" + mod.url + "\"\n")
+         cmake_file.write("   COMMIT \"" + mod.commit + "\"\n")
+         cmake_file.write("   NAME \"" + mod.name + "\"\n")
+      cmake_file.write(")\n")
+      cmake_file.write("\n")  
       
    # Now export the test definitions
    #
    sep_line(cmake_file)
-   cmake_file.write("Kaleidoscope tests")
+   cmake_file.write("# Kaleidoscope tests\n")
    sep_line(cmake_file)
    
    test_id = 1
@@ -580,48 +648,50 @@ def export_as_cmake(cmake_filename,
       # For leaf nodes of the testing tree, we always generate 
       # tests.
       #
-      if not test_node.generatesTests()
+      if not test_node.generatesTests():
          continue
       
-      cmake_file.write("kaleidoscope_firmware_test(")
-      cmake_file.write("   TEST_ID \"" + test_id + "\"")
-      cmake_file.write("   TEST_NAME \"" + test_node.generateGlobalName() + "\"")
-      cmake_file.write("   TEST_DESCRIPTION \"" + test_node.description + "\"")
+      cmake_file.write("kaleidoscope_firmware_test(\n")
+      cmake_file.write("   TEST_ID \"" + str(test_id) + "\"\n")
+      cmake_file.write("   TEST_NAME \"" + test_node.generateGlobalName() + "\"\n")
+      cmake_file.write("   TEST_DESCRIPTION \"" + test_node.description.value + "\"\n")
       cmake_file.write("   PYTHON_DRIVER \"" +
-                test_node.python_driver.filename + "\"")  
+                test_node.python_driver.filename + "\"\n")  
       cmake_file.write("   FIRMWARE_BUILD_ID \"" +
-                test_node.firmware_build.set_id + "\"")
+                str(test_node.unique_firmware_build.set_id) + "\"\n")
       
       # Additional information that is probably not used by CMake
       #
-      cmake_file.write("   # Directories where information was found \"" + test_node.name.directory + "\"") 
-      cmake_file.write("   NAME_ORIGIN \"" + test_node.name.directory + "\"")      
-      cmake_file.write("   DESCRIPTION_ORIGIN \"" + test_node.description.directory + "\"")
-      cmake_file.write("   PYTHON_DRIVER_ORIGIN \"" + test_node.python_driver.directory + "\"")
-      cmake_file.write("   FIRMWARE_BUILD_ID_ORIGIN \"" + test_node.firmware_build.directory + "\"")
+      cmake_file.write("   # Directories where information was found \"" + test_node.name.path + "\"\n") 
+      cmake_file.write("   NAME_ORIGIN \"" + test_node.name.path + "\"\n")      
+      cmake_file.write("   DESCRIPTION_ORIGIN \"" + test_node.description.path + "\"\n")
+      cmake_file.write("   FIRMWARE_BUILD_ORIGIN \"" + test_node.firmware_build.path + "\"\n")
       
-      cmake_file.write(")")
-      cmake_file.write("")
+      cmake_file.write(")\n")
+      cmake_file.write("\n")
       
       test_id += 1
    
    cmake_file.close()
    
+   sys.stdout.write("CMake information written to file \"" + cmake_filename
+                    + "\"\n")
+   
 def main():
     
     parser = argparse.ArgumentParser( 
        description = 
-       "This tool traverses the testing directory hierarchy of a "
+       "This tool traverses the testing path hierarchy of a "
        "Kaleidoscope module and generates testing information "
        "that can be used to generate and run tests using an additional "
        "build system.")
 
     parser.add_argument('-d', '--testing_tree_root', 
-      metavar  = 'directory', 
+      metavar  = 'path', 
       dest     = 'testing_tree_root', 
       required = 'True', 
       nargs    = 1,
-      help     = 'The root directory of the Kaleidoscope module\'s testing tree'
+      help     = 'The root path of the Kaleidoscope module\'s testing tree'
     )
     
     parser.add_argument('-c', '--cmake_test_definition_file', 
@@ -634,20 +704,22 @@ def main():
                    
     args = parser.parse_args()
 
+    tree_root = "".join(args.testing_tree_root)
     sys.stdout.write("Configuring testing tree in \"" 
-       + args.testing_tree_root + "\"\n")
+       + tree_root + "\"\n")
     
-    test_nodes_by_path = setup_testing_tree(args.testing_tree_root)
+    test_nodes_by_path = setup_testing_tree(tree_root)
     
     check_test_name_uniqueness(test_nodes_by_path)
     
-    unique_firmware_builds_by_SHA \
+    unique_firmware_builds_by_digest \
       = determine_unique_firmware_builds(test_nodes_by_path)
    
     if args.cmake_test_definition_file:
-       export_as_cmake( args.cmake_test_definition_file, 
+       cmake_test_definition_file = "".join(args.cmake_test_definition_file)
+       export_as_cmake( cmake_test_definition_file, 
                         test_nodes_by_path, 
-                        unique_firmware_builds_by_SHA):
+                        unique_firmware_builds_by_digest)
           
     # If test specifications are supposed to be generated in other formats,
     # just copy and adapt the export_as_cmake function

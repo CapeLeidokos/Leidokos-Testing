@@ -1,8 +1,8 @@
 --- # Indented Block
    name: Test1
    description: Description
-	modules:
-		- url: url1
+   modules:
+      - url: url1
         commit: commit1
         name: name1
       - url: url2
