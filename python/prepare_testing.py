@@ -1,6 +1,107 @@
 #!/usr/bin/python
 
+# -*- mode: python -*-
+# Kaleidoscope-Testing -- Testing framework for the Kaleidoscope firmware
+# Copyright (C) 2017 noseglasses (shinynoseglasses@github.com)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 # -*- coding: utf-8 -*-
+
+# This python script prepares testing specifications to
+# facilitate the generation of tests with external build systems.
+#
+# The script traverses a hierarchical directory structure,
+# collects and parses files and generates a set of
+# firmware builds and test runs that use the firmware 
+# that is build.
+#
+# *** Test specification ***
+#
+# A test is define by the following information
+#
+# - a name (without whitespaces)
+# - a description string
+# - a python driver file (driver.py)
+# - a firmware sketch (sketch.ino)
+# - a set of custom modules, where every module can define
+#    - an url of a git repository
+#    - a commit (optional)
+#    - a name (the directory name of a Kaleidoscope module,
+#         that matches the basepath of the cloned git repository)
+#
+# Some of this information can be defined in a yaml-specificaton file
+# (specification.yaml).
+#
+# A yaml file can e.g. read
+#
+#   name: Test1
+#   description: Description
+#   modules:
+#      - url: url1
+#        commit: commit1
+#        name: name1
+#      - url: url2
+#        commit: commit2
+#        name: name2
+#
+# When no "name" attribute is define, the basename of the respective
+# directory is used instead.
+#
+# All tests use a dedicated firmware that is defined by the set of custom modules
+# and the firmware sketch. Custom modules can override stock modules
+# by specifying their name. If a custom module is given a name but 
+# no url, the stock module with same name is deleted before the firmware
+# is build.
+#
+# Tests that define equal combinations of custom modules and firmware sketch share
+# a common firmware build to minimize the amount of build overhead.
+# The firmware is build to run on the host system (x86) and wrapped
+# in a shared library that can be loaded as a Python module.
+# The latter is done using the Kaleidoscope-Python-Wrapper.
+#
+# The actual name of a test is generated as a combination of the names
+# that are generated on the different levels of the testing directory
+# tree, either read from the yaml specification or derived from
+# the directory basename.
+#
+# *** Testing directory structure ***
+#
+# The directory structure may be hierarchical. 
+#
+# A basic principal is that information on higher levels of the
+# directory tree override similar information on lower levels.
+#
+# Each directory can but does not have to contain the following
+#
+# - sketch.ino : An arduino firmware sketch file
+# - driver.py : A python script that drives the actual test.
+# - specification.yaml : a yaml file with test information.
+# - __external__ : A directory that can contain the same files,
+#     i.e. sketch, driver and specification and that can e.g.
+#     actually be a git submodule to pull in external test 
+#     definitions. The __external__ directory is not further
+#     traversed.
+# - __test__ : A flag file that, if present, triggers
+#     the generation of tests on the respective directory
+#     level even though it is not a leaf directory.
+#     Note, that this file does have no effect if present in leaf
+#     directories.
+#
+# Tests are automatically generated for every node in the 
+# directory tree that is either a leaf node or contains a 
+# file named "__test__".
 
 import argparse
 import sys
@@ -9,6 +110,9 @@ import hashlib
 import yaml
 import copy
 
+# Finds a files that match the globbing pattern 
+# (non-recursively)
+#
 def find_files(pattern, path):
    result = []
    for root, dirs, files in os.walk(path):
@@ -18,7 +122,9 @@ def find_files(pattern, path):
          if fnmatch.fnmatch(name, pattern):
             result.append(os.path.join(root, name))
    return result
- 
+
+# Finds a files that matches name (non-recursively)
+#
 def find_file(name, path):
    for root, dirs, files in os.walk(path):
       if path != root:
@@ -27,20 +133,24 @@ def find_file(name, path):
          return os.path.join(root, name)
    return None
  
+# The names of the files and directories
+# that may be defined in the testing directory structure.
+# See the description at the top of this script for
+# more information about their meaning.
+#
 external_specification_subdir_name  = "__external__"
 test_trigger_basename               = "__test__"
 firmware_sketch_basename            = "sketch.ino"
 test_driver_basename                = "driver.py"
 test_specification_basename         = "specification.yaml"
 
-# Every information that defines a test is an
+# Every bit of information that influences a test is an
 # abstract entity. 
 #
-# Entities can either store data by themselfs, which is the 
-# case if they represent an entity that overrides a
-# parent entity, or they can reference an entity
-# that was defined on a parent level of the path
-# structure and was not overridden.
+# Entities are assigned to a path where they were
+# encountered. This is especially useful when complex test
+# hierarchies are defined to keep track of what is defined
+# on which hierarchy level.
 #
 class Entity(object):
    
@@ -65,9 +175,11 @@ class PythonDriver(File):
 class FirmwareSketch(File):
    pass
        
-# A property represents any information that
-# was collected from the yaml specification. 
+# A property represents any bit of information that
+# was e.g. collected from the yaml specification. 
 # Properties define a name -> value relation.
+# The name is not stored in the property but
+# defined by the class member name.
 #
 class Property(Entity):
    
@@ -79,16 +191,17 @@ class Property(Entity):
     return self.value == other.value
  
 # A Kaleidoscope module is either a core module or
-# a plugin, defined by ifs URL and optionally a commit definition.
-# If the commit is not explicitly defined, the masters head will 
-# be used.
-# A module can replace or remove a parent module with given name
+# a plugin, defined by its URL and an optional commit information.
+# If a commit is defined, it will be checked out before the
+# firmware is build. Else the head of the master branch will be
+# used instead.
+# A module can replace or remove a stock module with given name
 # if necessary.
 #
 # If no url is defined but a name, we assume that 
 # a parent module with respective name is supposed to be removed.
 # The sketch must take care that in such a case the 
-# removed module is not referenced in no possible way.
+# removed stock module is not referenced in any possible way.
 #
 class KaleidoscopeModule(object):
    
@@ -98,12 +211,13 @@ class KaleidoscopeModule(object):
       self.commit = None
       self.name = None
       
-   # To be able to define a module and its purpose
-   # exactly, we compute a digest of its content
+   # To be able to easily distinguish module definitions
+   # we compute a digest of all information that defines it.
    #
    def getDigest(self):
       
       m = hashlib.sha256()
+      
       m.update(self.url)
       m.update(self.commit)
       m.update(self.name)
@@ -123,12 +237,17 @@ class FirmwareBuild(Entity):
          self.digests = []
          self.firmware_sketch = None
          
+   # Checks if the firmware build is valid, i.e. well 
+   # defined
+   #
    def checkValidity(self):
       if not self.firmware_sketch:
          return False
       
       return True
    
+   # Checks if a certain module is already contained
+   #
    def containsModule(self, new_module):
           
       new_digest = new_module.getDigest()
@@ -152,6 +271,9 @@ class FirmwareBuild(Entity):
          
       return False
    
+   # Clones a firmware sketch definition on a certain tree level 
+   # to be customized on the next higher tree level
+   #
    def clone(self):
             
       new_self = FirmwareBuild(self)
@@ -165,11 +287,10 @@ class FirmwareBuild(Entity):
       
       return new_self
      
+   # Adds a module to the firmware definition
+   #
    def addModule(self, new_module):
-      
-      # If the new module does not define a name, just add it to the 
-      # list of modules
-      #
+
       new_name = new_module.name
       do_append = True
       
@@ -177,7 +298,7 @@ class FirmwareBuild(Entity):
       
       if new_name:
          
-         # Check if the firmware build
+         # Checks if the firmware build already
          # contains a module that has the same name as the new
          # module. If so, we replace it.
          #
@@ -192,9 +313,9 @@ class FirmwareBuild(Entity):
          self.modules.append(new_module)
          self.digests.append(new_digest)
             
-   # Compute the digests of all modules. As the order of
+   # Computes the digests of all modules. As the order of
    # updating the overall digest is not commutative 
-   # with respect to the members, we have to sort it first
+   # with respect to the members, we have to sort them first
    #
    def getDigest(self):
 
@@ -227,6 +348,9 @@ class TestNode(object):
       
       self.setup()
       
+   # Generates a global name that references the test node
+   # by concatenating the names of all parent nodes.
+   #
    def generateGlobalName(self):
      
       if self.parent:
@@ -239,10 +363,17 @@ class TestNode(object):
             return parent_name
       else:
          return self.name.value
-      
+   
+   # Checks if a node is supposed to generated tests.
+   # For this to be the case, the node must either be a leaf node
+   # or an interior node that defines a __test__ flag file.
+   #
    def generatesTests(self):
       return self.is_test_target or (len(self.children) == 0)
    
+   # Checks the validity of all test tree nodes and their 
+   # children
+   #
    def recursivelyCheckValidity(self):
       
       is_valid = True
@@ -599,10 +730,11 @@ def determine_unique_firmware_builds(test_nodes_by_path):
    #
    for test_node in test_nodes_by_path.values():
       
-      my_digest = test_node.firmware_build.getDigest()
-      
-      test_node.unique_firmware_build \
-         = unique_firmware_builds_by_digest.get(my_digest)
+      if test_node.generatesTests():
+         my_digest = test_node.firmware_build.getDigest()
+         
+         test_node.unique_firmware_build \
+            = unique_firmware_builds_by_digest.get(my_digest)
       
    return unique_firmware_builds_by_digest
       
@@ -651,7 +783,7 @@ def export_as_cmake(cmake_filename,
       if not test_node.generatesTests():
          continue
       
-      cmake_file.write("kaleidoscope_firmware_test(\n")
+      cmake_file.write("kaleidoscope_test(\n")
       cmake_file.write("   TEST_ID \"" + str(test_id) + "\"\n")
       cmake_file.write("   TEST_NAME \"" + test_node.generateGlobalName() + "\"\n")
       cmake_file.write("   TEST_DESCRIPTION \"" + test_node.description.value + "\"\n")
@@ -662,7 +794,9 @@ def export_as_cmake(cmake_filename,
       
       # Additional information that is probably not used by CMake
       #
-      cmake_file.write("   # Directories where information was found \"" + test_node.name.path + "\"\n") 
+      cmake_file.write("\n") 
+      cmake_file.write("   # Directories where information was found\n") 
+      cmake_file.write("   #\n") 
       cmake_file.write("   NAME_ORIGIN \"" + test_node.name.path + "\"\n")      
       cmake_file.write("   DESCRIPTION_ORIGIN \"" + test_node.description.path + "\"\n")
       cmake_file.write("   FIRMWARE_BUILD_ORIGIN \"" + test_node.firmware_build.path + "\"\n")
