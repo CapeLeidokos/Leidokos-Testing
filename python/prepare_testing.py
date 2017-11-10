@@ -334,6 +334,9 @@ class FirmwareBuild(Entity):
          
       return m.hexdigest()
 
+# Every subdirectory in the testing directory tree is mapped to an 
+# instance of class TestNode
+#
 class TestNode(object):
     
    def __init__(self, path, parent = None):
@@ -344,7 +347,16 @@ class TestNode(object):
       
       self.path = path
       
-      self.initEntities()
+      self.python_driver = None
+   
+      # Properties
+      #
+      self.name = None
+      self.description = None
+      
+      # Defines if tests are supposed to be run on this level
+      #
+      self.is_test_target = False
       
       self.setup()
       
@@ -425,24 +437,16 @@ class TestNode(object):
          
       return is_valid
       
-   def initEntities(self):
-      
-      self.python_driver = None
-   
-      # Properties
-      #
-      self.name = None
-      self.description = None
-      
-      # Defines if tests are supposed to be run on this level
-      #
-      self.is_test_target = False
-      
+   # Copies a member variable of the parent directory's TestNode to 
+   # this node (this can be seen a an inheritance of the respective property)
+   #
    def useParentEntity(self, name):
 
       if self.parent:
          setattr(self, name, getattr(self.parent, name))
       
+   # Looks for a python driver file in the current directory
+   #
    def findPythonDriver(self, path):
       
       python_driver_file = find_file(test_driver_basename, path)
@@ -452,8 +456,12 @@ class TestNode(object):
          self.python_driver.attach(self)
          return
       
+      # If we don.f fine one, we inherit the parents driver file
+      #
       self.useParentEntity("python_driver")
-         
+        
+   # Looks for a python driver file in the current directory
+   #
    def findFirmwareSketch(self, path):
       
       firmware_sketch_file = find_file(firmware_sketch_basename, path)
@@ -462,6 +470,10 @@ class TestNode(object):
          
          #sys.stdout.write("Sketch file %s found\n" % (firmware_sketch_file))
          
+         # A firmware build is defined by its modules and the firmware sketch.
+         # Thus, if the firmware sketch differs from that of the parent nodes
+         # firmware build, we generate an individual build.
+         #
          if not self.firmware_build.firmware_sketch \
                or not (self.firmware_build.firmware_sketch.filename \
                               == firmware_sketch_file):
@@ -476,6 +488,9 @@ class TestNode(object):
          #sys.stdout.write("Sketch file %s\n" % (self.firmware_build.firmware_sketch.filename))
          return
       
+   # Looks for an explicit test trigger flag file (such a file
+   # is only required for non-leaf directores of the testing tree).
+   #
    def findTestTrigger(self, path):
       
       test_trigger = find_file(test_trigger_basename, path)
@@ -484,6 +499,8 @@ class TestNode(object):
          #sys.stdout.write("File %s in path %s found\n" % (test_trigger, path))
          self.is_test_target = True
       
+   # Reads a yaml specification file, if present.
+   #
    def parseYAMLDefinitions(self, path):
       
       yaml_file = find_file(test_specification_basename, path)
@@ -499,8 +516,8 @@ class TestNode(object):
             print(exc)
             return
             
-      # my_yaml contains all necessary information as 
-      # a large dictionary
+      # my_yaml now contains all necessary information as 
+      # a nested data set of dictionaries and lists
       #
       new_name = my_yaml.get("name") 
       if new_name:
@@ -530,12 +547,11 @@ class TestNode(object):
             #
             if not self.firmware_build.containsModule(new_module):
                
-               # And this path does not have its own set of
-               # modules...
+               # And this path does not have its own firmware build...
                #
                if not self.needs_own_firmware_build:
                   
-                  # We clone a new copy
+                  # We generate an individual firmware build for this node
                   #
                   self.cloneFirmwareBuild()
                   
@@ -562,9 +578,9 @@ class TestNode(object):
          self.firmware_build.path = self.path
          self.needs_own_firmware_build = True
       
-      # Check if there is a external reference to another subpath
-      # Such a subpath could, e.g. be a git submodule.
-      # If an external specification is found, anythin else
+      # Check if there is a __external__ directory.
+      # Such a directory could, e.g. be a git submodule.
+      # If such a directory is found, anything else (driver, specification, firmware)
       # in the path is ignored.
       #
       external_specification_dir \
@@ -582,7 +598,7 @@ class TestNode(object):
          # If we found an external specfication path, 
          # check for any other files being present, 
          # appart from the test trigger file.
-         # If so, we abort with an error.
+         # If so, abort with an error.
          
          all_files = find_files("*", self.path)
          
@@ -611,26 +627,23 @@ class TestNode(object):
       else:
          source_path = self.path
             
-      # Every entity that is not modified below, points
-      # to its parent 
+      # Inherit some information from the parent node to generate a
+      # default configuration that can be overriden during further 
+      # setup.
       #
-      #self.useParentEntity("name")
       self.useParentEntity("description")
       self.useParentEntity("firmware_build")
        
       # The source path is the path that is searched
-      # for test information. This can either be the current
+      # for any test information. This might either be the current
       # path or the external test reference path
-      # determined above
+      # determined above.
       
       self.findPythonDriver(source_path)
       self.findFirmwareSketch(source_path)
       self.parseYAMLDefinitions(source_path)
-      #sys.stdout.write("After setup\n")
-      #sys.stdout.write("   Node: " + str(id(self)) + "\n")
-      #sys.stdout.write("   FB str: " + str(self.firmware_build) + "\n")
       
-      # Look in the current path for a TEST trigger file
+      # Look in the current path for a __test__ trigger file
       #
       self.findTestTrigger(self.path)
                
@@ -640,8 +653,6 @@ class TestNode(object):
          self.name.attach(self)
          
 def setup_testing_tree(testing_tree_root):
-
-   # Every 
    
    test_nodes_by_path = {}
    
@@ -649,19 +660,19 @@ def setup_testing_tree(testing_tree_root):
    
    test_nodes_by_path[testing_tree_root] = root_node
    
-   # Recursively traverse the testing path structure
-   # and establish a testing tree
+   # Recursively traverses the testing directory structure
+   # and generate the testing tree.
    #
    for dirpath, dirs, files in os.walk(testing_tree_root):
       
-      # Ignore empty directories
+      # Ignores empty directories
       #
       if (len(dirs) == 0) and (len(files) == 0):
          continue
       
       dirpath_basename = os.path.basename(dirpath)
       
-      # Skip any external testing specification dirs
+      # Skips any external testing specification dirs
       #
       if dirpath_basename == external_specification_subdir_name:
          continue
@@ -683,6 +694,9 @@ def setup_testing_tree(testing_tree_root):
          
          test_nodes_by_path[my_abs_dir] = new_test_node
          
+   # Perform a validity check ot the testing information contained in
+   # the testing directory tree.
+   #
    test_nodes_valid = root_node.recursivelyCheckValidity()
    
    if not test_nodes_valid:
@@ -692,6 +706,11 @@ def setup_testing_tree(testing_tree_root):
          
    return test_nodes_by_path
 
+# Checks and ensures that all tests have individual names. 
+# By defining identical name properties in the yaml specification
+# files, it is possible that two subdirs test nodes
+# are assigned the same global name.
+#
 def check_test_name_uniqueness(test_nodes_by_path):
    
    test_name_to_test_node = {}
@@ -707,6 +726,12 @@ def check_test_name_uniqueness(test_nodes_by_path):
          
       test_name_to_test_node[test_name] = test_node
 
+# It is possible that different subdirectories of the build tree 
+# specify identical firmware modules and sketch. The corresponding 
+# firmware builds can, however, be shared. To detect this
+# we compute a digest of every firmware build, join builds with
+# identical digests and finally assign the unique builds to the test nodes.
+#
 def determine_unique_firmware_builds(test_nodes_by_path):
 
    # Generate a unique set of firmware builds.
@@ -742,6 +767,13 @@ def sep_line(file):
    file.write(
 "################################################################################\n")
       
+# Exports firmware build and test information in a way that resembels
+# CMake function calls.
+#
+# A note to developers:
+#    If test specifications are supposed to be generated in other formats,
+#    just copy and adapt this function.
+#
 def export_as_cmake(cmake_filename, 
                     test_nodes_by_path, 
                     unique_firmware_builds_by_digest):
@@ -854,9 +886,6 @@ def main():
        export_as_cmake( cmake_test_definition_file, 
                         test_nodes_by_path, 
                         unique_firmware_builds_by_digest)
-          
-    # If test specifications are supposed to be generated in other formats,
-    # just copy and adapt the export_as_cmake function
                    
 if __name__ == "__main__":
     main()

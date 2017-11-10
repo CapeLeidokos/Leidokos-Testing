@@ -25,13 +25,15 @@ endif()
 
 # The URL of the Kaleidoscope module to test can be parsed via
 #
-set(KALEIDOSCOPE_TESTING_TARGET_URL "" CACHE STRING "The URL of a git repository that represents the Kaleidoscope module to test")
+set(KALEIDOSCOPE_TESTING_TARGET_URL "" CACHE STRING 
+   "The URL of a git repository that represents the Kaleidoscope module to test")
 
 if("${KALEIDOSCOPE_TESTING_TARGET_URL}" STREQUAL "")
    message(FATAL_ERROR "No valid KALEIDOSCOPE_TESTING_TARGET_URL defined")
 endif()
 
-get_filename_component(target_repo_dir_basename "${KALEIDOSCOPE_TESTING_TARGET_URL}" NAME_WE)
+get_filename_component(target_repo_dir_basename 
+   "${KALEIDOSCOPE_TESTING_TARGET_URL}" NAME_WE)
 
 set(testing_target_dir "${CMAKE_BINARY_DIR}/target_module")
 
@@ -47,8 +49,24 @@ else()
    message("Git repository already cloned to ${testing_target_dir}/${target_repo_dir_basename}")
 endif()
 
-# Establish the recursively defined testing infrastructure
-#
+set(cmake_testing_specification 
+   "${CMAKE_BINARY_DIR}/cmake_testing_specification.include.cmake")
+   
+set(KALEIDOSCOPE_TESTING_TARGET_MODULE_DIR "" CACHE PATH 
+   "The root directory of the module to be tested")
+   
+set(KALEIDOSCOPE_TESTING_TREE_ROOT "${KALEIDOSCOPE_TESTING_TARGET_MODULE_DIR}/testing" CACHE PATH 
+   "The testing directory root of the module to be tested") 
+
+find_package(PythonInterp REQUIRED)
+
+if(NOT PYTHONINTERP_FOUND)
+   message(SEND_ERROR "Kaleidoscope-Testing requires a Python interpreter to prepare the testing infrastructure. If you have installed python in a non standard location, please configure the CMake build system accordingly. See the documentation about the FindPythonInterp module at https://cmake.org/cmake/help/v3.0/module/FindPythonInterp.html for additional build system variables that support the python auto detection process.")
+   message(SEND_ERROR "Under Ubuntu linux python can be installed as")
+   message(SEND_ERROR "sudo apt-get install libboost-python-dev")
+   message(FATAL_ERROR "Aborting.")
+   
+endif()
 ... this is something that might better be done using python?
 
 # If all this is done, we have a list of tests
