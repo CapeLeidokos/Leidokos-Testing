@@ -15,81 +15,346 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
  
- project(Kaleidoscope-Testing)
+project(Kaleidoscope-Testing)
+cmake_minimum_required(VERSION 2.8)
 
+# Use a custom execute_process wrapper that does proper error reporting 
+#
+include("${CMAKE_SOURCE_DIR}/cmake/execute_process.cmake")
+
+# We need git to clone remote repositories
+#
 find_package(Git REQUIRED)
 
 if(NOT GIT_FOUND)
    message(FATAL_ERROR "Unable to find git executable. Please configure the CMake build system manually if git is installed in a non standard location")
 endif()
 
-# The URL of the Kaleidoscope module to test can be parsed via
+# Kaleidoscope-CMake is required as build system to build the virtual (host)
+# firmwares to run tests with. It is provided as a git submodule of this
+# project.
+# 
+set(kaleidoscope_cmake_path "${CMAKE_SOURCE_DIR}/3rd_party/Kaleidoscope-CMake")
+
+# The URL of the Kaleidoscope module to test
 #
 set(KALEIDOSCOPE_TESTING_TARGET_URL "" CACHE STRING 
    "The URL of a git repository that represents the Kaleidoscope module to test")
 
-if("${KALEIDOSCOPE_TESTING_TARGET_URL}" STREQUAL "")
-   message(FATAL_ERROR "No valid KALEIDOSCOPE_TESTING_TARGET_URL defined")
+if(NOT "${KALEIDOSCOPE_TESTING_TARGET_URL}" STREQUAL "")
+
+   get_filename_component(target_repo_dir_basename 
+      "${KALEIDOSCOPE_TESTING_TARGET_URL}" NAME_WE)
+
+   set(testing_target_dir "${CMAKE_BINARY_DIR}/target_module")
+
+   # Clone the target module that is supposed to be tested
+   #
+   if(NOT EXISTS "${testing_target_dir}/${target_repo_dir_basename}/.git")
+      message("Cloning git repository ${KALEIDOSCOPE_TESTING_TARGET_URL}")
+      _execute_process(
+         "clone Kaleidoscope module \"${KALEIDOSCOPE_TESTING_TARGET_URL}\" \
+that is supposed to be tested
+         COMMAND "${GIT_EXECUTABLE}" clone "${KALEIDOSCOPE_TESTING_TARGET_URL}"
+         WORKING_DIRECTORY "${testing_target_dir}"
+      )
+   else()
+      message("Git repository already cloned to \
+${testing_target_dir}/${target_repo_dir_basename}")
+   endif()
+   
+   set(default_module_dir "${testing_target_dir}/${target_repo_dir_basename}")
 endif()
-
-get_filename_component(target_repo_dir_basename 
-   "${KALEIDOSCOPE_TESTING_TARGET_URL}" NAME_WE)
-
-set(testing_target_dir "${CMAKE_BINARY_DIR}/target_module")
-
-# Clone the target module, i.e. the module that is supposed to be tested
+   
+# Alternatively to specifying an URL for the target module, we 
+# allow defining a directory that represents the root of a testing
+# files system.
 #
-if(NOT EXISTS "${testing_target_dir}/${target_repo_dir_basename}/.git")
-   message("Cloning git repository ${KALEIDOSCOPE_TESTING_TARGET_URL}")
-   execute_process(
-      COMMAND "${GIT_EXECUTABLE}" clone "${KALEIDOSCOPE_TESTING_TARGET_URL}"
-      WORKING_DIRECTORY "${testing_target_dir}"
-   )
-else()
-   message("Git repository already cloned to ${testing_target_dir}/${target_repo_dir_basename}")
+set(KALEIDOSCOPE_TESTING_TREE_ROOT 
+   "${default_module_dir}/testing" CACHE PATH 
+   "The testing directory root of the module to be tested") 
+   
+if(NOT EXISTS "${KALEIDOSCOPE_TESTING_TREE_ROOT}")
+   message(FATAL_ERROR "Unable to find testing tree root \
+KALEIDOSCOPE_TESTING_TREE_ROOT=\"${KALEIDOSCOPE_TESTING_TREE_ROOT}\"")
 endif()
 
-set(cmake_testing_specification 
-   "${CMAKE_BINARY_DIR}/cmake_testing_specification.include.cmake")
-   
-set(KALEIDOSCOPE_TESTING_TARGET_MODULE_DIR "" CACHE PATH 
-   "The root directory of the module to be tested")
-   
-set(KALEIDOSCOPE_TESTING_TREE_ROOT "${KALEIDOSCOPE_TESTING_TARGET_MODULE_DIR}/testing" CACHE PATH 
-   "The testing directory root of the module to be tested") 
-
+# Python is needed to parse the testing file system and generate
+# CMake compatible information about firmware builds and tests.
+#
 find_package(PythonInterp REQUIRED)
 
 if(NOT PYTHONINTERP_FOUND)
-   message(SEND_ERROR "Kaleidoscope-Testing requires a Python interpreter to prepare the testing infrastructure. If you have installed python in a non standard location, please configure the CMake build system accordingly. See the documentation about the FindPythonInterp module at https://cmake.org/cmake/help/v3.0/module/FindPythonInterp.html for additional build system variables that support the python auto detection process.")
+   message(SEND_ERROR 
+"Kaleidoscope-Testing requires a Python interpreter to prepare the testing \
+infrastructure. If you have installed python in a non standard location, \
+please configure the CMake build system accordingly. See the documentation \
+about the FindPythonInterp module at \
+https://cmake.org/cmake/help/v3.0/module/FindPythonInterp.html \
+for additional build system variables that support the python auto \
+detection process.")
    message(SEND_ERROR "Under Ubuntu linux python can be installed as")
    message(SEND_ERROR "sudo apt-get install libboost-python-dev")
    message(FATAL_ERROR "Aborting.")
    
 endif()
-... this is something that might better be done using python?
 
-# If all this is done, we have a list of tests
-# 
-# Each test is defined by
-# 
-# - a python driver file
-# - a sketch (.ino
-# - a test specification
-#    - name (unique)
-#    - description
-#    - list of dependent modules (a list of modules the test firmware requires to build)
+# The python script that does the transformation of the testing file
+# system.
+#
+set(prepare_testing_file "${CMAKE_SOURCE_DIR}/python/prepare_testing.py")
 
-# To have as little to build as possible, all those tests, that use the same modules
-# should share a common build target
+# A CMake file that is generated by the python process. It contains
+# all information needed to generate tests.
+#
+set(cmake_test_definitions_file "${CMAKE_BINARY_DIR}/test_definitions.cmake")
 
-# It is also necessary to automatically add the Kaleidoscope-Python-Wrapper plugin to all lists of dependent modules
+# Prepare the test definition file.
+#
+_execute_process(
+   "prepare test file"
+   COMMAND "${PYTHON_EXECUTABLE}" "${prepare_testing_file}"
+      -d "${KALEIDOSCOPE_TESTING_TREE_ROOT}"
+      -c "${cmake_test_definitions_file}"
+)
 
-# For every independent set of modules add a build target
+# This is the directory in the binary tree that will 
+# host all the firmwares build for our tests.
+#
+set(firmware_builds_base_dir "${CMAKE_BINARY_DIR}/firmware")
 
-# For every test add a CTest test that uses the firmware that matches and the respective python  
-#    test driver
+# Some stuff that needs to be done during build time needs to be
+# carried out through CMake scripts that are generated during the 
+# configuration stage. This is necessary for being able to use portable CMake
+# scripting during the build stage.
+#
+set(cmake_scripts_dir "${CMAKE_BINARY_DIR}/cmake_scripts")
 
-# Build is then done with make or whatever other build system
+# An auxiliary function that helps us to determine the firmware build 
+# directory for a given build ID.
+#
+function(_get_firmware_build_dir
+   build_id_
+   result_var_
+)
+   set(firmware_dir "${firmware_builds_base_dir}/${build_id_}")
+   set("${result_var_}" "${firmware_dir}/build" PARENT_SCOPE)
+endfunction()
 
-# Testing is carried out via CTest
+# This function is called from the generated file ${cmake_test_definitions_file}.
+#
+# It generates a CMake target that builds a Kaleidoscope firmware based
+# on a given firmware sketch and a specific module configuration.
+#
+function(kaleidoscope_firmware_build)
+
+   set(options "")
+   set(one_value_args "BUILD_ID" "DIGEST" "FIRMWARE_SKETCH")
+   set(multi_value_args URL COMMIT NAME)
+   
+   cmake_parse_arguments(args "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN} )
+   
+   # Skip the preparation when CMake is configured again
+   #
+   if(EXISTS "${firmware_dir}/hardware/keyboardio/avr")
+      return()
+   endif()
+   
+   # Prepare the firmware directory
+   #
+   file(MAKE_DIRECTORY "${firmware_dir}/hardware/keyboardio")
+      
+   set(arduino_boards_url "https://github.com/keyboardio/Arduino-Boards.git")
+   _execute_process(
+      "clone ${https://github.com/keyboardio/Arduino-Boards.git}"
+      COMMAND "${GIT_EXECUTABLE}" clone 
+         --recursive "${arduino_boards_url}"
+         hardware/keyboardio/avr
+      WORKING_DIRECTORY "${firmware_dir}"
+   )
+   
+   # Kaleidoscope-Python-Wrapper is needed by all builds to ensure that 
+   # we can build firmware libraries for the host target that
+   # can be used by our python drivers
+   #
+   list(APPEND args_URL "https://github.com/noseglasses/Kaleidoscope-Python-Wrapper.git")
+   list(APPEND args_COMMIT "")
+   list(APPEND args_NAME "")
+   
+   list(LENGTH args_URL n_urls)
+   list(LENGTH args_COMMIT n_commits)
+   list(LENGTH args_NAME n_names)
+   
+   if(NOT n_urls EQUALS n_commits)
+      message(FATAL_ERROR "The number of URLs and commits must match")
+   endif()
+   
+   if(NOT n_urls EQUALS n_names)
+      message(FATAL_ERROR "The number of URLs and names must match")
+   endif()
+   
+   set(firmware_libraries_dir 
+      "${firmware_dir}/hardware/keyboardio/avr/libraries")
+   
+   if(n_urls GREATER 0)
+   
+      # Configure modules. Every module corresponds to a directory in 
+      # hardware/keyboardio/avr/libraries. 
+      #
+      foreach(id RANGE ${n_urls})
+         list(GET args_URL ${id} url)
+         list(GET args_COMMIT ${id} commit)
+         list(GET args_NAME ${id} name)
+         
+         # If a name is defined for a module, the respective module from
+         # the stock firmware is removed.
+         if(NOT "${name}" STREQUAL "")
+         
+            set(kaleidoscope_module_path "${firmware_libraries_dir}/${name}")
+            
+            if(NOT EXISTS "${kaleidoscope_module_path}")
+               message(FATAL_ERROR "Kaleidoscope module \
+\"${kaleidoscope_module_path}\" is scheduled for removal. The respective \
+directory is, however, non-existent")
+            endif()
+               
+            # Remove the Kaleidoscope module
+            #
+            file(REMOVE_RECURSE "${kaleidoscope_module_path}")
+         endif()
+         
+         # If an url is provided, it is cloned to hardware/keyboardio/avr/libraries.
+         #
+         if(NOT "${url}" STREQUAL "")
+         
+            _execute_process(
+               "clone Kaleidoscope module \"${url}\""
+               COMMAND "${GIT_EXECUTABLE}" clone --recursive
+                  "${url}"
+               WORKING_DIRECTORY "${firmware_libraries_dir}"
+            )
+            
+            get_filename_component(name "${url}" NAME_WE) 
+         endif()
+         
+         # At this point name must be non-empty
+         #
+         if("${name}" STREQUAL "")
+            message(FATAL_ERROR "Empty name")
+         endif()
+               
+         # If a commit is defined, it is checked out for the respective module.
+         #
+         if(NOT "${commit}" STREQUAL "")
+         
+            _execute_process(
+               "check out commit ${commit} in module ${name}"
+               COMMAND "${GIT_EXECUTABLE}" checkout ${commit}
+               WORKING_DIRECTORY "${firmware_libraries_dir}/${name}"
+            )
+          endif()
+      endforeach()
+   endif()
+   
+   set(firmware_build_dir "${firmware_dir}/build")
+   
+   file(MAKE_DIRECTORY "${firmware_build_dir}")
+   
+   # Generate a build script that is executed during the build 
+   # phase. Thus, we can use CMake scripting during the build phase.
+   #
+   set(firmware_build_script 
+      "${cmake_scripts_dir}/build_firmware_${BUILD_ID}.script.cmake")
+   
+   file(WRITE "${firmware_build_script}" "\
+include(\"${CMAKE_SOURCE_DIR}/cmake/execute_process.cmake\")
+
+file(GLOB module_dirs \"${firmware_dir}/hardware/keyboardio/avr/*\")
+
+foreach(module_dir \${module_dirs})
+   if(EXISTS \"${module_dir}/CMakeLists.txt\")
+      _execute_process(
+         \"configure module \\\"\${module_dir}\\\"
+         COMMAND \"${CMAKE_COMMAND}\" .
+         WORKING_DIRECTORY \"\${module_dir}\"
+      )
+   endif()
+endforeach()
+
+_execute_process(
+   COMMAND \"${CMAKE_COMMAND}\" 
+      \"-DKALEIDOSCOPE_HARDWARE_BASE_PATH=${firmware_dir}/hardware\"
+      \"-DKALEIDOSCOPE_VENDOR_ID=keyboardio\"
+      \"-DKALEIDOSCOPE_ARCHITECTURE_ID=virtual\"
+      \"-DKALEIDOSCOPE_FIRMWARE_SKETCH=${args_FIRMWARE_SKETCH}\"
+      \"${kaleidoscope_cmake_path}\"
+   WORKING_DIRECTORY \"${firmware_build_dir}\"
+)
+_execute_process(
+   COMMAND \"${CMAKE_COMMAND}\" --build
+)
+")
+
+   set(firmware_executable "${firmware_build_dir}/kaleidoscope.firmware")
+   
+   add_custom_command(
+      OUTPUT "${firmware_executable}"
+      COMMAND "${CMAKE_COMMAND}" -P "${firmware_build_script}"
+      COMMENT "Building Kaleidoscope firmware from \
+sketch \"${args_FIRMWARE_SKETCH}\"")
+   )
+   
+   # Prepare a target to build the firmware
+   #
+   add_custom_target(
+      firmware_${args_BUILD_ID}
+      ALL
+      DEPENDS "${firmware_executable}"
+   )
+endfunction() # end of kaleidoscope_firmware_build
+
+# This function is called from the generated file ${cmake_test_definitions_file}.
+#
+# It defines a firmware test that is based on a given python driver file
+# and operates on a specific firmware build.
+#
+function(kaleidoscope_test)
+
+   set(options "")
+   set(one_value_args "TEST_NAME" "PYTHON_DRIVER" "FIRMWARE_BUILD_ID"
+      # unused
+      "TEST_ID" "TEST_DESCRIPTION" "NAME_ORIGIN" "DESCRIPTION_ORIGIN" "FIRMWARE_BUILD_ORIGIN")
+   set(multi_value_args "")
+   
+   cmake_parse_arguments(args "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN} )
+
+#    if("${args_TEST_ID}" STREQUAL "")
+#       message(FATAL_ERROR "Empty test ID encountered")
+#    endif()
+   
+   if("${args_TEST_NAME}" STREQUAL "")
+      message(FATAL_ERROR "Empty test name encountered")
+   endif()
+   
+   if("${args_PYTHON_DRIVER}" STREQUAL "")
+      message(FATAL_ERROR "Empty python driver encountered")
+   endif()
+   
+   if("${args_FIRMWARE_BUILD_ID}" STREQUAL "")
+      message(FATAL_ERROR "Empty firmware build id encountered")
+   endif()
+   
+   _get_firmware_build_dir("${args_FIRMWARE_BUILD_ID}" firmware_build_dir)
+   
+   add_test(
+      NAME "${args_TEST_NAME}"
+      COMMAND "${PYTHON_EXECUTABLE}" "${args_PYTHON_DRIVER}"
+      WORKING_DIRECTORY "${firmware_build_dir}"
+   )
+endfunction() # end of kaleidoscope_test
+
+# By including the test definition file, a number of calls 
+# to kaleidoscope_firmware_build(...) and kaleidoscope_test(...)
+# are executed.
+#
+include("${cmake_test_definitions_file}")

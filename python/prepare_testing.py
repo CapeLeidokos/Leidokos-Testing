@@ -85,9 +85,9 @@
 #
 # Each directory can but does not have to contain the following
 #
-# - sketch.ino : An arduino firmware sketch file
-# - driver.py : A python script that drives the actual test.
-# - specification.yaml : a yaml file with test information.
+# - *sketch.ino : An arduino firmware sketch file
+# - *driver.py : A python script that drives the actual test.
+# - *specification.yaml : a yaml file with test information.
 # - __external__ : A directory that can contain the same files,
 #     i.e. sketch, driver and specification and that can e.g.
 #     actually be a git submodule to pull in external test 
@@ -109,6 +109,7 @@ import os
 import hashlib
 import yaml
 import copy
+import fnmatch
 
 # Finds a files that match the globbing pattern 
 # (non-recursively)
@@ -132,7 +133,22 @@ def find_file(name, path):
       if name in files:
          return os.path.join(root, name)
    return None
- 
+
+def find_unique_file(pattern, path, file_type_descr):
+   
+   files = find_files(pattern, path)
+   
+   n_files = len(files)
+   
+   selected_file = None
+   if n_files > 0:
+      selected_file = files[0]
+      if n_files > 1:
+         sys.stdout.write("Warning: Multiple " + file_type_descr + " found in directory \""
+            + path + "\". Using the first encounter \""
+            + selected_file + "\"")
+   return selected_file
+
 # The names of the files and directories
 # that may be defined in the testing directory structure.
 # See the description at the top of this script for
@@ -140,9 +156,9 @@ def find_file(name, path):
 #
 external_specification_subdir_name  = "__external__"
 test_trigger_basename               = "__test__"
-firmware_sketch_basename            = "sketch.ino"
-test_driver_basename                = "driver.py"
-test_specification_basename         = "specification.yaml"
+firmware_sketch_pattern            = "*sketch.ino"
+test_driver_pattern                = "*driver.py"
+test_specification_pattern         = "*specification.yaml"
 
 # Every bit of information that influences a test is an
 # abstract entity. 
@@ -416,7 +432,7 @@ class TestNode(object):
             sys.stdout.write(
                "A test node for path \"%s\" was found that does not "
                "feature a python driver file (%s).\n" 
-                  % (self.path, test_driver_basename))
+                  % (self.path, test_driver_pattern))
             
          if not self.firmware_build:
             is_valid = False
@@ -428,7 +444,7 @@ class TestNode(object):
             is_valid = False
             sys.stdout.write(
                "A test node for path \"%s\" was found that does not "
-               "feature a firmware sketch (%s).\n" % (self.path, firmware_sketch_basename))
+               "feature a firmware sketch (%s).\n" % (self.path, firmware_sketch_pattern))
             #sys.stdout.write("Node: " + str(id(self)) + "\n")
             #sys.stdout.write("FB str: " + str(self.firmware_build) + "\n")
             
@@ -448,9 +464,9 @@ class TestNode(object):
    # Looks for a python driver file in the current directory
    #
    def findPythonDriver(self, path):
-      
-      python_driver_file = find_file(test_driver_basename, path)
-      
+
+      python_driver_file = find_unique_file(test_driver_pattern, path,
+                                               "python test driver files")
       if python_driver_file:
          self.python_driver = PythonDriver(python_driver_file)
          self.python_driver.attach(self)
@@ -464,7 +480,8 @@ class TestNode(object):
    #
    def findFirmwareSketch(self, path):
       
-      firmware_sketch_file = find_file(firmware_sketch_basename, path)
+      firmware_sketch_file = find_unique_file(firmware_sketch_pattern, path,
+                                               "sketch files")
       
       if firmware_sketch_file:
          
@@ -503,7 +520,8 @@ class TestNode(object):
    #
    def parseYAMLDefinitions(self, path):
       
-      yaml_file = find_file(test_specification_basename, path)
+      yaml_file = find_unique_file(test_specification_pattern, path,
+                                               "test specification files")
       
       if not yaml_file:
          return

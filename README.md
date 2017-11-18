@@ -1,1 +1,95 @@
 # Kaleidoscope-Testing
+This is a regression testing system for the Kaleidoscope firmware.
+It allows to test individual Kaleidoscope modules (core, plugins, etc.).
+
+# Regression testing
+Regression testing is of great important to guarantee and maintain quality of
+software projects.
+
+Whenever a bug is discovered and fixed
+an individual test is supposed to be added that tests the functionality
+of the feature affected by the bug. Thus, in case the same bug is accidentaly re-introduced
+into the software by future changes, it cannot go undetected.
+
+The philosophy behind this is that one cannot have an infinite number of tests,
+nor is it possible to foresee what is going to malfunction. But it is at
+least possible to prevent that a bug bites twice.
+
+# Prerequisites
+This module depends on a number of other software projects which are listed below. For all those projects, install commands for a Ubuntu Linux system
+are provided.
+
+* CMake (sudo apt-get install cmake)
+* Python (sudo apt-get install python)
+
+There are two other projects, that Kaleidoscope-Testing heavily depends on,
+namely [Kaleidoscope-CMake](https://github.com/noseglasses/Kaleidoscope-CMake), used as a convenient build system and [Kaleidoscope-Python-Wrapper](https://github.com/noseglasses/Kaleidoscope-Python-Wrapper),
+to generate host specific python modules to wrap a x86 version of the
+firmware.
+
+# Test specification
+Every Kaleidoscope module can define an arbitrary number of tests. These tests are defined through a hierarchical testing file system. It contains information about what functionality to
+test as well as what firmware modules appart from the stock firmware are involved in the testing.
+
+Kaleidoscope-Testing tries to detect if several tests are based on a common
+firmware build. Such shared firmware builds are generated only once to safe resources.
+
+Please see the comment section of the file `python/prepare_testing.py`
+for a detailed description of the testing file system.
+
+# Under the hood
+It can help to understand what the testing system does under the hood. However, it is not necessary to understand the exact mode of operation to generate tests and even less to run tests.
+
+The regression testing process has three stages, a configuration stage, a build stage
+and a testing stage.
+
+During the configuration stage, i.e. when CMake is executed:
+
+1. The hierarchial testing file system is parsed via a python script that generates CMake parsable information about what firmware builds are necessary and which tests to run.
+
+2. For every required firmware build a build system target is generated.
+
+3. For every test that is specified, a CTest test is generated
+
+During the build stage, when e.g. `make` is executed a mimimum set of firmwares is build.
+
+During the testing stage, all CTest tests are executed.
+
+# Usage
+The testing system is designed to operate on a single Kaleidoscope module.
+The module's git repository URL can be specified through the CMake variable
+`KALEIDOSCOPE_TESTING_TARGET_URL` or, alternatively, via the path
+to an already cloned version of the module (`KALEIDOSCOPE_TESTING_TREE_ROOT`).
+
+The following is an example that demonstrates how to run the testing system for a ficticiuous Kaleidoscope
+module `Kaleidoscope-Transparent-Aluminum`.
+
+```bash
+git clone --recursive \
+ https://github.com/noseglasses/Kaleidoscope-Testing.git
+
+mkdir testing
+cd testing
+
+# Configuration stage
+#
+cmake -DKALEIDOSCOPE_TESTING_TARGET_URL=<URL of Kaleidoscope-Transparent-Aluminum> \
+ ./Kaleidoscope-Testing
+
+# Build stage
+#
+cmake --build .
+
+# Testing stage
+#
+ctest
+```
+
+# CMake configuration
+The following table provides information about the CMake configuration variables
+that affect the behavior of the regression testing system.
+
+| CMake Variable | Description |
+|:-------------------------------- |:---------------------------------------- |
+| KALEIDOSCOPE_TESTING_TARGET_URL  | The URL of the git repository of the Kaleidoscope module to test |
+| KALEIDOSCOPE_TESTING_TREE_ROOT   | The root directory of the Kaleidoscope module to be tested. This is only effective if KALEIDOSCOPE_TESTING_TARGET_URL is empty. |
