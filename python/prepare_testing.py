@@ -681,7 +681,7 @@ def setup_testing_tree(testing_tree_root):
    # Recursively traverses the testing directory structure
    # and generate the testing tree.
    #
-   for dirpath, dirs, files in os.walk(testing_tree_root):
+   for dirpath, dirs, files in os.walk(testing_tree_root, followlinks=True):
       
       # Ignores empty directories
       #

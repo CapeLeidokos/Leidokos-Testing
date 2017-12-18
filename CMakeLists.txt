@@ -51,11 +51,14 @@ if(NOT "${KALEIDOSCOPE_TESTING_TARGET_URL}" STREQUAL "")
    # Clone the target module that is supposed to be tested
    #
    if(NOT EXISTS "${testing_target_dir}/${target_repo_dir_basename}/.git")
+   
+      file(MAKE_DIRECTORY "${testing_target_dir}")
+   
       message("Cloning git repository ${KALEIDOSCOPE_TESTING_TARGET_URL}")
       _execute_process(
          "clone Kaleidoscope module \"${KALEIDOSCOPE_TESTING_TARGET_URL}\" \
-that is supposed to be tested
-         COMMAND "${GIT_EXECUTABLE}" clone "${KALEIDOSCOPE_TESTING_TARGET_URL}"
+that is supposed to be tested"
+         COMMAND "${GIT_EXECUTABLE}" clone --recursive "${KALEIDOSCOPE_TESTING_TARGET_URL}"
          WORKING_DIRECTORY "${testing_target_dir}"
       )
    else()
@@ -141,6 +144,12 @@ function(_get_firmware_build_dir
    set("${result_var_}" "${firmware_dir}/build" PARENT_SCOPE)
 endfunction()
 
+function(_configuration_error_build
+   build_id_
+)
+   message(FATAL_ERROR "Firmware build ${build_id_}: ${ARGN}")
+endfunction()
+
 # This function is called from the generated file ${cmake_test_definitions_file}.
 #
 # It generates a CMake target that builds a Kaleidoscope firmware based
@@ -154,57 +163,68 @@ function(kaleidoscope_firmware_build)
    
    cmake_parse_arguments(args "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN} )
    
-   # Skip the preparation when CMake is configured again
-   #
-   if(EXISTS "${firmware_dir}/hardware/keyboardio/avr")
-      return()
-   endif()
+   _get_firmware_build_dir("${args_BUILD_ID}" firmware_build_dir)
    
    # Prepare the firmware directory
    #
-   file(MAKE_DIRECTORY "${firmware_dir}/hardware/keyboardio")
+   file(MAKE_DIRECTORY "${firmware_build_dir}/hardware/keyboardio")
       
    set(arduino_boards_url "https://github.com/keyboardio/Arduino-Boards.git")
-   _execute_process(
-      "clone ${https://github.com/keyboardio/Arduino-Boards.git}"
-      COMMAND "${GIT_EXECUTABLE}" clone 
-         --recursive "${arduino_boards_url}"
-         hardware/keyboardio/avr
-      WORKING_DIRECTORY "${firmware_dir}"
-   )
    
-   # Kaleidoscope-Python-Wrapper is needed by all builds to ensure that 
+   if(NOT EXISTS "${firmware_build_dir}/hardware/keyboardio/avr")
+      _execute_process(
+         "clone ${arduino_boards_url}"
+         COMMAND "${GIT_EXECUTABLE}" clone 
+            --recursive "${arduino_boards_url}"
+            hardware/keyboardio/avr
+         WORKING_DIRECTORY "${firmware_build_dir}"
+      )
+   endif()
+   
+   # Kaleidoscope-Python is needed by all builds to ensure that 
    # we can build firmware libraries for the host target that
    # can be used by our python drivers
    #
-   list(APPEND args_URL "https://github.com/noseglasses/Kaleidoscope-Python-Wrapper.git")
-   list(APPEND args_COMMIT "")
-   list(APPEND args_NAME "")
+   list(APPEND args_URL "https://github.com/noseglasses/Kaleidoscope-Python.git")
+   list(APPEND args_COMMIT "__NONE__")
+   list(APPEND args_NAME "__NONE__")
    
    list(LENGTH args_URL n_urls)
    list(LENGTH args_COMMIT n_commits)
    list(LENGTH args_NAME n_names)
    
-   if(NOT n_urls EQUALS n_commits)
-      message(FATAL_ERROR "The number of URLs and commits must match")
+   if(NOT n_urls EQUAL n_commits)
+      _configuration_error_build(${args_BUILD_ID} 
+         "The number of URLs and commits must match. \
+There are ${n_urls} URLs (${args_URL}) and ${n_commits} (${args_COMMIT}) commits registered")
    endif()
    
-   if(NOT n_urls EQUALS n_names)
-      message(FATAL_ERROR "The number of URLs and names must match")
+   if(NOT n_urls EQUAL n_names)
+      _configuration_error_build(${args_BUILD_ID} 
+         "The number of URLs and names must match")
    endif()
    
    set(firmware_libraries_dir 
-      "${firmware_dir}/hardware/keyboardio/avr/libraries")
+      "${firmware_build_dir}/hardware/keyboardio/avr/libraries")
    
    if(n_urls GREATER 0)
+   
+      math(EXPR max_id "${n_urls} - 1")
    
       # Configure modules. Every module corresponds to a directory in 
       # hardware/keyboardio/avr/libraries. 
       #
-      foreach(id RANGE ${n_urls})
+      foreach(id RANGE ${max_id})
          list(GET args_URL ${id} url)
          list(GET args_COMMIT ${id} commit)
          list(GET args_NAME ${id} name)
+         
+         if("${commit}" STREQUAL "__NONE__")
+            set(commit "")
+         endif()
+         if("${name}" STREQUAL "__NONE__")
+            set(name "")
+         endif()
          
          # If a name is defined for a module, the respective module from
          # the stock firmware is removed.
@@ -213,7 +233,8 @@ function(kaleidoscope_firmware_build)
             set(kaleidoscope_module_path "${firmware_libraries_dir}/${name}")
             
             if(NOT EXISTS "${kaleidoscope_module_path}")
-               message(FATAL_ERROR "Kaleidoscope module \
+               _configuration_error_build(${args_BUILD_ID} 
+                  "Kaleidoscope module \
 \"${kaleidoscope_module_path}\" is scheduled for removal. The respective \
 directory is, however, non-existent")
             endif()
@@ -226,21 +247,23 @@ directory is, however, non-existent")
          # If an url is provided, it is cloned to hardware/keyboardio/avr/libraries.
          #
          if(NOT "${url}" STREQUAL "")
-         
-            _execute_process(
-               "clone Kaleidoscope module \"${url}\""
-               COMMAND "${GIT_EXECUTABLE}" clone --recursive
-                  "${url}"
-               WORKING_DIRECTORY "${firmware_libraries_dir}"
-            )
             
             get_filename_component(name "${url}" NAME_WE) 
+         
+            if(NOT EXISTS "${firmware_libraries_dir}/${name}")
+               _execute_process(
+                  "clone Kaleidoscope module \"${url}\""
+                  COMMAND "${GIT_EXECUTABLE}" clone --recursive
+                     "${url}"
+                  WORKING_DIRECTORY "${firmware_libraries_dir}"
+               )
+            endif()
          endif()
          
          # At this point name must be non-empty
          #
          if("${name}" STREQUAL "")
-            message(FATAL_ERROR "Empty name")
+            _configuration_error_build(${args_BUILD_ID} "Empty name")
          endif()
                
          # If a commit is defined, it is checked out for the respective module.
@@ -256,42 +279,41 @@ directory is, however, non-existent")
       endforeach()
    endif()
    
-   set(firmware_build_dir "${firmware_dir}/build")
-   
    file(MAKE_DIRECTORY "${firmware_build_dir}")
    
    # Generate a build script that is executed during the build 
    # phase. Thus, we can use CMake scripting during the build phase.
    #
    set(firmware_build_script 
-      "${cmake_scripts_dir}/build_firmware_${BUILD_ID}.script.cmake")
+      "${cmake_scripts_dir}/build_firmware_${args_BUILD_ID}.script.cmake")
    
    file(WRITE "${firmware_build_script}" "\
 include(\"${CMAKE_SOURCE_DIR}/cmake/execute_process.cmake\")
 
-file(GLOB module_dirs \"${firmware_dir}/hardware/keyboardio/avr/*\")
+file(GLOB module_dirs \"${firmware_dir}/hardware/keyboardio/avr/libraries/*\")
 
-foreach(module_dir \${module_dirs})
-   if(EXISTS \"${module_dir}/CMakeLists.txt\")
-      _execute_process(
-         \"configure module \\\"\${module_dir}\\\"
-         COMMAND \"${CMAKE_COMMAND}\" .
-         WORKING_DIRECTORY \"\${module_dir}\"
-      )
-   endif()
-endforeach()
+# foreach(module_dir \${module_dirs})
+#    if(EXISTS \"\${module_dir}/CMakeLists.txt\")
+#       _execute_process(
+#          \"configure module \\\"\${module_dir}\\\"\"
+#          COMMAND \"${CMAKE_COMMAND}\" .
+#          WORKING_DIRECTORY \"\${module_dir}\"
+#       )
+#    endif()
+# endforeach()
 
 _execute_process(
+   \"configure firmware build ${args_BUILD_ID}\"
    COMMAND \"${CMAKE_COMMAND}\" 
-      \"-DKALEIDOSCOPE_HARDWARE_BASE_PATH=${firmware_dir}/hardware\"
-      \"-DKALEIDOSCOPE_VENDOR_ID=keyboardio\"
-      \"-DKALEIDOSCOPE_ARCHITECTURE_ID=virtual\"
       \"-DKALEIDOSCOPE_FIRMWARE_SKETCH=${args_FIRMWARE_SKETCH}\"
-      \"${kaleidoscope_cmake_path}\"
+      \"${firmware_libraries_dir}/Kaleidoscope-Python\"
    WORKING_DIRECTORY \"${firmware_build_dir}\"
 )
+
 _execute_process(
-   COMMAND \"${CMAKE_COMMAND}\" --build
+   \"generate firmware build ${args_BUILD_ID}\"
+   COMMAND \"${CMAKE_COMMAND}\" --build .
+   WORKING_DIRECTORY \"${firmware_build_dir}\"
 )
 ")
 
@@ -301,7 +323,7 @@ _execute_process(
       OUTPUT "${firmware_executable}"
       COMMAND "${CMAKE_COMMAND}" -P "${firmware_build_script}"
       COMMENT "Building Kaleidoscope firmware from \
-sketch \"${args_FIRMWARE_SKETCH}\"")
+sketch \"${args_FIRMWARE_SKETCH}\""
    )
    
    # Prepare a target to build the firmware

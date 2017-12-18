@@ -9,9 +9,10 @@ function(_execute_process
    )
    
    if(NOT result EQUAL 0)
-      message(SEND_ERROR "Unable to ${explanation}")
-      message(SEND_ERROR "${output}")
-      message(SEND_ERROR "${error}")
+      message("Unable to ${explanation_}")
+      message("command: ${ARGN}")
+      message("output: ${output}")
+      message("result: ${result}")
       message(FATAL_ERROR "Aborting.")
    endif()
 endfunction()
