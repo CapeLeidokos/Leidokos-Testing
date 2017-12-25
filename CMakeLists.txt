@@ -169,12 +169,13 @@ function(kaleidoscope_firmware_build)
    #
    file(MAKE_DIRECTORY "${firmware_build_dir}/hardware/keyboardio")
       
-   set(arduino_boards_url "https://github.com/keyboardio/Arduino-Boards.git")
+   set(arduino_boards_url "https://github.com/noseglasses/Arduino-Boards.git")
    
    if(NOT EXISTS "${firmware_build_dir}/hardware/keyboardio/avr")
       _execute_process(
          "clone ${arduino_boards_url}"
-         COMMAND "${GIT_EXECUTABLE}" clone 
+         COMMAND "${GIT_EXECUTABLE}" clone
+            -b regression_testing
             --recursive "${arduino_boards_url}"
             hardware/keyboardio/avr
          WORKING_DIRECTORY "${firmware_build_dir}"
