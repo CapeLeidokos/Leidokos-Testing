@@ -163,6 +163,7 @@ function(kaleidoscope_firmware_build)
    
    cmake_parse_arguments(args "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN} )
    
+#    _get_firmware_build_dir("cache" cache_firmware_build_dir)
    _get_firmware_build_dir("${args_BUILD_ID}" firmware_build_dir)
    
    # Prepare the firmware directory
@@ -171,9 +172,24 @@ function(kaleidoscope_firmware_build)
       
    set(arduino_boards_url "https://github.com/noseglasses/Arduino-Boards.git")
    
+#    if(NOT EXISTS "${cache_firmware_build_dir}/hardware/keyboardio/avr")
+#    
+#       file(MAKE_DIRECTORY "${cache_firmware_build_dir}/hardware/keyboardio")
+#       
+#       _execute_process(
+#          "clone ${arduino_boards_url} to be cached"
+#          COMMAND "${GIT_EXECUTABLE}" clone
+#             -b regression_testing
+#             --recursive "${arduino_boards_url}"
+#             hardware/keyboardio/avr
+#          WORKING_DIRECTORY "${cache_firmware_build_dir}"
+#       )
+#    endif()
+   
    if(NOT EXISTS "${firmware_build_dir}/hardware/keyboardio/avr")
+      
       _execute_process(
-         "clone ${arduino_boards_url}"
+         "clone ${arduino_boards_url} to be cached"
          COMMAND "${GIT_EXECUTABLE}" clone
             -b regression_testing
             --recursive "${arduino_boards_url}"
@@ -181,6 +197,14 @@ function(kaleidoscope_firmware_build)
          WORKING_DIRECTORY "${firmware_build_dir}"
       )
    endif()
+   
+   # Copy the cached firmware to save download bandwith
+   #
+#    _execute_process(
+#       "copying cached Arduino-Boards repository"
+#       COMMAND "${CMAKE_COMMAND}" -E copy_directory
+#          "${cache_firmware_build_dir}" "${firmware_build_dir}"
+#    )
    
    # Kaleidoscope-Python is needed by all builds to ensure that 
    # we can build firmware libraries for the host target that
@@ -369,12 +393,32 @@ function(kaleidoscope_test)
    
    _get_firmware_build_dir("${args_FIRMWARE_BUILD_ID}" firmware_build_dir)
    
+   message("Adding test ${args_TEST_NAME}")
+   
+   set(test_driver_script 
+      "${cmake_scripts_dir}/run_test_${args_TEST_ID}.script.cmake")
+      
+   file(WRITE "${test_driver_script}" "\
+include(\"${CMAKE_SOURCE_DIR}/cmake/execute_process.cmake\")
+
+set(ENV{PYTHONPATH} \"${firmware_build_dir}:${firmware_build_dir}/hardware/keyboardio/avr/libraries/Kaleidoscope-Python/python\")
+
+_execute_process(
+   \"running test firmware build ${args_TEST_ID}\"
+   COMMAND \"${PYTHON_EXECUTABLE}\" \"${args_PYTHON_DRIVER}\"
+   WORKING_DIRECTORY \"${firmware_build_dir}\"
+)
+")
+   
    add_test(
       NAME "${args_TEST_NAME}"
-      COMMAND "${PYTHON_EXECUTABLE}" "${args_PYTHON_DRIVER}"
-      WORKING_DIRECTORY "${firmware_build_dir}"
+      COMMAND "${CMAKE_COMMAND}" -P "${test_driver_script}"
    )
 endfunction() # end of kaleidoscope_test
+
+# Enable testing with CTest
+#
+enable_testing()
 
 # By including the test definition file, a number of calls 
 # to kaleidoscope_firmware_build(...) and kaleidoscope_test(...)
