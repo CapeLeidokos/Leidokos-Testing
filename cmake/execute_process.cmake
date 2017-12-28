@@ -12,6 +12,7 @@ function(_execute_process
       message("Unable to ${explanation_}")
       message("command: ${ARGN}")
       message("output: ${output}")
+      message("error: ${error}")
       message("result: ${result}")
       message(FATAL_ERROR "Aborting.")
    endif()
