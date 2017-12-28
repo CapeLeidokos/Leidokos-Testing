@@ -419,7 +419,7 @@ include(\"${CMAKE_SOURCE_DIR}/cmake/execute_process.cmake\")
 
 set(ENV{PYTHONPATH} \"${firmware_build_dir}:${firmware_build_dir}/hardware/keyboardio/avr/libraries/Kaleidoscope-Python/python\")
 
-message("PYTHONPATH = \$ENV{PYTHONPATH}")
+message(\"PYTHONPATH = \$ENV{PYTHONPATH}\")
 
 _execute_process(
    \"running test firmware build ${args_TEST_ID}\"
