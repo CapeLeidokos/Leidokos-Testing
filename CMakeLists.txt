@@ -317,7 +317,6 @@ directory is, however, non-existent")
    #
    function(_init_cmake_variable
       var_
-      cmake_var_
    )
       if("${${var_}}" STREQUAL "")
          return()
