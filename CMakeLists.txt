@@ -311,26 +311,42 @@ directory is, however, non-existent")
    #
    set(firmware_build_script 
       "${cmake_scripts_dir}/build_firmware_${args_BUILD_ID}.script.cmake")
+      
+   # Allow to pass certain variables that are specified at the command line of
+   # Kaleidoscope-Testing, on to Kaleidoscope-Python.
+   #
+   function(_init_cmake_variable
+      var_
+      cmake_var_
+   )
+      if("${${var_}}" STREQUAL "")
+         return()
+      endif()
+      
+      set("add_cmd_line" "${add_cmd_line} -D${var_}=${${var_}}" PARENT_SCOPE)
+   endfunction()
+   
+   set(add_cmd_line "")
+   _init_cmake_variable(Boost_DIR)
+   _init_cmake_variable(Boost_INCLUDE_DIR)
+   _init_cmake_variable(Boost_LIBRARY_DIR_DEBUG)
+   _init_cmake_variable(Boost_LIBRARY_DIR_RELEASE)
+   _init_cmake_variable(Boost_PYTHON_LIBRARY_DEBUG)
+   _init_cmake_variable(Boost_PYTHON_LIBRARY_RELEASE)
+   _init_cmake_variable(PYTHON_INCLUDE_DIR)
+   _init_cmake_variable(PYTHON_LIBRARY)
+   _init_cmake_variable(PYTHON_LIBRARY_DEBUG)
    
    file(WRITE "${firmware_build_script}" "\
 include(\"${CMAKE_SOURCE_DIR}/cmake/execute_process.cmake\")
 
 file(GLOB module_dirs \"${firmware_dir}/hardware/keyboardio/avr/libraries/*\")
 
-# foreach(module_dir \${module_dirs})
-#    if(EXISTS \"\${module_dir}/CMakeLists.txt\")
-#       _execute_process(
-#          \"configure module \\\"\${module_dir}\\\"\"
-#          COMMAND \"${CMAKE_COMMAND}\" .
-#          WORKING_DIRECTORY \"\${module_dir}\"
-#       )
-#    endif()
-# endforeach()
-
 _execute_process(
    \"configure firmware build ${args_BUILD_ID}\"
    COMMAND \"${CMAKE_COMMAND}\" 
       \"-DKALEIDOSCOPE_FIRMWARE_SKETCH=${args_FIRMWARE_SKETCH}\"
+      ${add_cmd_line}
       \"${firmware_libraries_dir}/Kaleidoscope-Python\"
    WORKING_DIRECTORY \"${firmware_build_dir}\"
 )
