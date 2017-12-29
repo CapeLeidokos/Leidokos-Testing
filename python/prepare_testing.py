@@ -346,7 +346,7 @@ class FirmwareBuild(Entity):
       for digest in digests:
          m.update(str(digest))
          
-      m.update(self.firmware_sketch.filename)
+      m.update(self.firmware_sketch.filename.encode('utf-8'))
          
       return m.hexdigest()
 
