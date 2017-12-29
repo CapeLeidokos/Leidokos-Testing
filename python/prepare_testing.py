@@ -804,7 +804,7 @@ def export_as_cmake(cmake_filename,
    cmake_file.write("# Kaleidoscope firmware builds\n")
    sep_line(cmake_file)
    
-   for digest, firmware_build in unique_firmware_builds_by_digest.iteritems():
+   for digest, firmware_build in unique_firmware_builds_by_digest.items():
       cmake_file.write("kaleidoscope_firmware_build(\n")
       cmake_file.write("   BUILD_ID \"" + str(firmware_build.set_id) + "\"\n")
       cmake_file.write("   DIGEST \"" + str(digest) + "\"\n")

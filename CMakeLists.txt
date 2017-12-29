@@ -85,6 +85,7 @@ endif()
 # Python is needed to parse the testing file system and generate
 # CMake compatible information about firmware builds and tests.
 #
+set(Python_ADDITIONAL_VERSIONS "3")
 find_package(PythonInterp REQUIRED)
 
 if(NOT PYTHONINTERP_FOUND)
