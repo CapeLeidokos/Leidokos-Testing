@@ -26,7 +26,11 @@ while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symli
 done
 CUR_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
-module_git_url=$1
+if [ "$#" -gt 1 ]; then
+   module_git_url=$1
+else
+   module_git_url="https://github.com/${TRAVIS_REPO_SLUG}.git"
+fi
 
 kaleidoscope_testing_dir="${CUR_DIR}/.."
 
