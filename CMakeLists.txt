@@ -40,6 +40,10 @@ set(kaleidoscope_cmake_path "${CMAKE_SOURCE_DIR}/3rd_party/Kaleidoscope-CMake")
 #
 set(KALEIDOSCOPE_TESTING_TARGET_URL "" CACHE STRING 
    "The URL of a git repository that represents the Kaleidoscope module to test")
+   
+if(NOT "${KALEIDOSCOPE_TESTING_TARGET_BRANCH}" STREQUAL "")
+   set(branch_spec -b "${KALEIDOSCOPE_TESTING_TARGET_BRANCH}")
+endif()
 
 if(NOT "${KALEIDOSCOPE_TESTING_TARGET_URL}" STREQUAL "")
 
@@ -58,7 +62,9 @@ if(NOT "${KALEIDOSCOPE_TESTING_TARGET_URL}" STREQUAL "")
       _execute_process(
          "clone Kaleidoscope module \"${KALEIDOSCOPE_TESTING_TARGET_URL}\" \
 that is supposed to be tested"
-         COMMAND "${GIT_EXECUTABLE}" clone --recursive "${KALEIDOSCOPE_TESTING_TARGET_URL}"
+         COMMAND "${GIT_EXECUTABLE}" clone 
+            ${branch_spec}
+            --recursive "${KALEIDOSCOPE_TESTING_TARGET_URL}"
          WORKING_DIRECTORY "${testing_target_dir}"
       )
    else()
