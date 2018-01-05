@@ -244,6 +244,8 @@ function(kaleidoscope_firmware_build)
    )
    
    if(KALEIDOSCOPE_TESTING_AUTO_ADD_TESTED_REPO)
+      message("KALEIDOSCOPE_TESTING_AUTO_ADD_TESTED_REPO=${KALEIDOSCOPE_TESTING_AUTO_ADD_TESTED_REPO}")
+      message("Adding ${KALEIDOSCOPE_TESTING_TARGET_URL} to firmware modules")
       _add_repo(
          "${KALEIDOSCOPE_TESTING_TARGET_URL}"
          "${KALEIDOSCOPE_TESTING_TARGET_BRANCH}"
@@ -348,6 +350,7 @@ directory is, however, non-existent")
    foreach(lib_dir ${library_dirs})
       set(setup_script "${lib_dir}/setup_library.script.cmake")
       if(EXISTS "${setup_script}")
+         message("Setting up module ${lib_dir}")
          _execute_process(
             "setup library in ${lib_dir}"
             COMMAND "${CMAKE_COMMAND}" 
