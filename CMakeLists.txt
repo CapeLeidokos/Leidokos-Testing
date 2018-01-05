@@ -157,6 +157,26 @@ function(_configuration_error_build
    message(FATAL_ERROR "Firmware build ${build_id_}: ${ARGN}")
 endfunction()
 
+macro(_add_repo
+   url_
+   commit_
+   name_
+)
+   list(APPEND args_URL "${url_}")
+   
+   if(NOT "${commit_}" STREQUAL "")
+      list(APPEND args_COMMIT "${commit_}")
+   else()
+      list(APPEND args_COMMIT "__NONE__")
+   endif()
+   
+   if(NOT "${name_}" STREQUAL "")
+      list(APPEND args_NAME "${name_}")
+   else()
+      list(APPEND args_NAME "__NONE__")
+   endif()
+endmacro()
+
 # This function is called from the generated file ${cmake_test_definitions_file}.
 #
 # It generates a CMake target that builds a Kaleidoscope firmware based
@@ -217,9 +237,19 @@ function(kaleidoscope_firmware_build)
    # we can build firmware libraries for the host target that
    # can be used by our python drivers
    #
-   list(APPEND args_URL "https://github.com/noseglasses/Kaleidoscope-Python.git")
-   list(APPEND args_COMMIT "__NONE__")
-   list(APPEND args_NAME "__NONE__")
+   _add_repo(
+      "https://github.com/noseglasses/Kaleidoscope-Python.git"
+      ""
+      ""
+   )
+   
+   if(KALEIDOSCOPE_TESTING_AUTO_ADD_TESTED_REPO)
+      _add_repo(
+         "${DKALEIDOSCOPE_TESTING_TARGET_URL}"
+         "${KALEIDOSCOPE_TESTING_TARGET_BRANCH}"
+         ""
+      )
+   endif()
    
    list(LENGTH args_URL n_urls)
    list(LENGTH args_COMMIT n_commits)

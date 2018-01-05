@@ -33,6 +33,7 @@ kaleidoscope_testing_dir="${CUR_DIR}/.."
 cmake \
    "-DKALEIDOSCOPE_TESTING_TARGET_URL=${module_git_url}" \
    "-DKALEIDOSCOPE_TESTING_TARGET_BRANCH=${TRAVIS_BRANCH}" \
+   "-DKALEIDOSCOPE_TESTING_AUTO_ADD_TESTED_REPO=TRUE" \
    "-DBoost_PYTHON_LIBRARY_RELEASE=/usr/lib/x86_64-linux-gnu/libboost_python-py34.so" \
    "-DPYTHON_EXECUTABLE=/usr/bin/python3" \
    ${kaleidoscope_testing_dir}
