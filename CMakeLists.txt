@@ -193,6 +193,8 @@ function(kaleidoscope_firmware_build)
 #    _get_firmware_build_dir("cache" cache_firmware_build_dir)
    _get_firmware_build_dir("${args_BUILD_ID}" firmware_build_dir)
    
+   message("Preparing firmware build in ${firmware_build_dir}")
+   
    # Prepare the firmware directory
    #
    file(MAKE_DIRECTORY "${firmware_build_dir}/hardware/keyboardio")
@@ -244,8 +246,8 @@ function(kaleidoscope_firmware_build)
    )
    
    if(KALEIDOSCOPE_TESTING_AUTO_ADD_TESTED_REPO)
-      message("KALEIDOSCOPE_TESTING_AUTO_ADD_TESTED_REPO=${KALEIDOSCOPE_TESTING_AUTO_ADD_TESTED_REPO}")
-      message("Adding ${KALEIDOSCOPE_TESTING_TARGET_URL} to firmware modules")
+      message("   KALEIDOSCOPE_TESTING_AUTO_ADD_TESTED_REPO=${KALEIDOSCOPE_TESTING_AUTO_ADD_TESTED_REPO}")
+      message("   Adding ${KALEIDOSCOPE_TESTING_TARGET_URL} to firmware modules")
       _add_repo(
          "${KALEIDOSCOPE_TESTING_TARGET_URL}"
          "${KALEIDOSCOPE_TESTING_TARGET_BRANCH}"
@@ -315,6 +317,7 @@ directory is, however, non-existent")
             get_filename_component(name "${url}" NAME_WE) 
          
             if(NOT EXISTS "${firmware_libraries_dir}/${name}")
+               message("   Cloning module ${url}")
                _execute_process(
                   "clone Kaleidoscope module \"${url}\""
                   COMMAND "${GIT_EXECUTABLE}" clone --recursive
@@ -334,6 +337,7 @@ directory is, however, non-existent")
          #
          if(NOT "${commit}" STREQUAL "")
          
+            message("   Checking out ${commit} of module ${name}")
             _execute_process(
                "check out commit ${commit} in module ${name}"
                COMMAND "${GIT_EXECUTABLE}" checkout ${commit}
@@ -350,7 +354,7 @@ directory is, however, non-existent")
    foreach(lib_dir ${library_dirs})
       set(setup_script "${lib_dir}/setup_library.script.cmake")
       if(EXISTS "${setup_script}")
-         message("Setting up module ${lib_dir}")
+         message("   Setting up module ${lib_dir}")
          _execute_process(
             "setup library in ${lib_dir}"
             COMMAND "${CMAKE_COMMAND}" 
