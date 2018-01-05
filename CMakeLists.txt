@@ -245,7 +245,7 @@ function(kaleidoscope_firmware_build)
    
    if(KALEIDOSCOPE_TESTING_AUTO_ADD_TESTED_REPO)
       _add_repo(
-         "${DKALEIDOSCOPE_TESTING_TARGET_URL}"
+         "${KALEIDOSCOPE_TESTING_TARGET_URL}"
          "${KALEIDOSCOPE_TESTING_TARGET_BRANCH}"
          ""
       )
