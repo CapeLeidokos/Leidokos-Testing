@@ -40,6 +40,10 @@ set(kaleidoscope_cmake_path "${CMAKE_SOURCE_DIR}/3rd_party/Kaleidoscope-CMake")
 #
 set(KALEIDOSCOPE_TESTING_TARGET_URL "" CACHE STRING 
    "The URL of a git repository that represents the Kaleidoscope module to test")
+   
+if(NOT "${KALEIDOSCOPE_TESTING_TARGET_BRANCH}" STREQUAL "")
+   set(branch_spec -b "${KALEIDOSCOPE_TESTING_TARGET_BRANCH}")
+endif()
 
 if(NOT "${KALEIDOSCOPE_TESTING_TARGET_URL}" STREQUAL "")
 
@@ -58,7 +62,9 @@ if(NOT "${KALEIDOSCOPE_TESTING_TARGET_URL}" STREQUAL "")
       _execute_process(
          "clone Kaleidoscope module \"${KALEIDOSCOPE_TESTING_TARGET_URL}\" \
 that is supposed to be tested"
-         COMMAND "${GIT_EXECUTABLE}" clone --recursive "${KALEIDOSCOPE_TESTING_TARGET_URL}"
+         COMMAND "${GIT_EXECUTABLE}" clone 
+            ${branch_spec}
+            --recursive "${KALEIDOSCOPE_TESTING_TARGET_URL}"
          WORKING_DIRECTORY "${testing_target_dir}"
       )
    else()
@@ -151,6 +157,26 @@ function(_configuration_error_build
    message(FATAL_ERROR "Firmware build ${build_id_}: ${ARGN}")
 endfunction()
 
+macro(_add_repo
+   url_
+   commit_
+   name_
+)
+   list(APPEND args_URL "${url_}")
+   
+   if(NOT "${commit_}" STREQUAL "")
+      list(APPEND args_COMMIT "${commit_}")
+   else()
+      list(APPEND args_COMMIT "__NONE__")
+   endif()
+   
+   if(NOT "${name_}" STREQUAL "")
+      list(APPEND args_NAME "${name_}")
+   else()
+      list(APPEND args_NAME "__NONE__")
+   endif()
+endmacro()
+
 # This function is called from the generated file ${cmake_test_definitions_file}.
 #
 # It generates a CMake target that builds a Kaleidoscope firmware based
@@ -166,6 +192,8 @@ function(kaleidoscope_firmware_build)
    
 #    _get_firmware_build_dir("cache" cache_firmware_build_dir)
    _get_firmware_build_dir("${args_BUILD_ID}" firmware_build_dir)
+   
+   message("Preparing firmware build in ${firmware_build_dir}")
    
    # Prepare the firmware directory
    #
@@ -211,9 +239,21 @@ function(kaleidoscope_firmware_build)
    # we can build firmware libraries for the host target that
    # can be used by our python drivers
    #
-   list(APPEND args_URL "https://github.com/noseglasses/Kaleidoscope-Python.git")
-   list(APPEND args_COMMIT "__NONE__")
-   list(APPEND args_NAME "__NONE__")
+   _add_repo(
+      "https://github.com/noseglasses/Kaleidoscope-Python.git"
+      ""
+      ""
+   )
+   
+   if(KALEIDOSCOPE_TESTING_AUTO_ADD_TESTED_REPO)
+      message("   KALEIDOSCOPE_TESTING_AUTO_ADD_TESTED_REPO=${KALEIDOSCOPE_TESTING_AUTO_ADD_TESTED_REPO}")
+      message("   Adding ${KALEIDOSCOPE_TESTING_TARGET_URL} to firmware modules")
+      _add_repo(
+         "${KALEIDOSCOPE_TESTING_TARGET_URL}"
+         "${KALEIDOSCOPE_TESTING_TARGET_BRANCH}"
+         ""
+      )
+   endif()
    
    list(LENGTH args_URL n_urls)
    list(LENGTH args_COMMIT n_commits)
@@ -277,6 +317,7 @@ directory is, however, non-existent")
             get_filename_component(name "${url}" NAME_WE) 
          
             if(NOT EXISTS "${firmware_libraries_dir}/${name}")
+               message("   Cloning module ${url}")
                _execute_process(
                   "clone Kaleidoscope module \"${url}\""
                   COMMAND "${GIT_EXECUTABLE}" clone --recursive
@@ -296,6 +337,7 @@ directory is, however, non-existent")
          #
          if(NOT "${commit}" STREQUAL "")
          
+            message("   Checking out ${commit} of module ${name}")
             _execute_process(
                "check out commit ${commit} in module ${name}"
                COMMAND "${GIT_EXECUTABLE}" checkout ${commit}
@@ -310,11 +352,12 @@ directory is, however, non-existent")
    file(GLOB library_dirs "${firmware_build_dir}/hardware/keyboardio/avr/libraries/*")
    
    foreach(lib_dir ${library_dirs})
-      set(setup_script "${lib_dir}/setup.script.cmake")
+      set(setup_script "${lib_dir}/setup_library.script.cmake")
       if(EXISTS "${setup_script}")
+         message("   Setting up module ${lib_dir}")
          _execute_process(
             "setup library in ${lib_dir}"
-            COMMAND "${CMAKE_COMMANE}" 
+            COMMAND "${CMAKE_COMMAND}"
                "-DCMAKE_SOURCE_DIR=${lib_dir}"
                -P "${setup_script}"
             WORKING_DIRECTORY "${lib_dir}"

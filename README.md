@@ -94,4 +94,6 @@ The following CMake configuration variables affect the behavior of the regressio
 | CMake Variable | Description |
 |:-------------------------------- |:---------------------------------------- |
 | KALEIDOSCOPE_TESTING_TARGET_URL  | The URL of the git repository of the Kaleidoscope module to test |
+| KALEIDOSCOPE_TESTING_TARGET_BRANCH | The branch of the target repo to checkout for testing |
 | KALEIDOSCOPE_TESTING_TREE_ROOT   | The root directory of the Kaleidoscope module to be tested. This is only effective if KALEIDOSCOPE_TESTING_TARGET_URL is empty. |
+| KALEIDOSCOPE_TESTING_AUTO_ADD_TESTED_REPO | This flag defines whether the tested repo is supposed to be automatically added to the firmware build modules |
