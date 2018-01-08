@@ -400,8 +400,6 @@ directory is, however, non-existent")
    file(WRITE "${firmware_build_script}" "\
 include(\"${CMAKE_SOURCE_DIR}/cmake/execute_process.cmake\")
 
-file(GLOB module_dirs \"${firmware_dir}/hardware/keyboardio/avr/libraries/*\")
-
 _execute_process(
    \"configure firmware build ${args_BUILD_ID}\"
    COMMAND \"${CMAKE_COMMAND}\" 
