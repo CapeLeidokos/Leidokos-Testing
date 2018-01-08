@@ -305,6 +305,23 @@ directory is, however, non-existent")
       endforeach()
    endif()
    
+   # Configure all those modules that provide a setup.script.cmake
+   #
+   file(GLOB library_dirs "${firmware_build_dir}/hardware/keyboardio/avr/libraries/*")
+   
+   foreach(lib_dir ${library_dirs})
+      set(setup_script "${lib_dir}/setup.script.cmake")
+      if(EXISTS "${setup_script}")
+         _execute_process(
+            "setup library in ${lib_dir}"
+            COMMAND "${CMAKE_COMMANE}" 
+               "-DCMAKE_SOURCE_DIR=${lib_dir}"
+               -P "${setup_script}"
+            WORKING_DIRECTORY "${lib_dir}"
+         )
+      endif()
+   endforeach()
+   
    file(MAKE_DIRECTORY "${firmware_build_dir}")
    
    # Generate a build script that is executed during the build 
