@@ -30,12 +30,6 @@ if(NOT GIT_FOUND)
    message(FATAL_ERROR "Unable to find git executable. Please configure the CMake build system manually if git is installed in a non standard location")
 endif()
 
-# Kaleidoscope-CMake is required as build system to build the virtual (host)
-# firmwares to run tests with. It is provided as a git submodule of this
-# project.
-# 
-set(kaleidoscope_cmake_path "${CMAKE_SOURCE_DIR}/3rd_party/Kaleidoscope-CMake")
-
 # The URL of the Kaleidoscope module to test
 #
 set(KALEIDOSCOPE_TESTING_TARGET_URL "" CACHE STRING 
