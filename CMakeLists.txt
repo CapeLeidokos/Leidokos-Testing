@@ -228,14 +228,27 @@ function(kaleidoscope_firmware_build)
 #       COMMAND "${CMAKE_COMMAND}" -E copy_directory
 #          "${cache_firmware_build_dir}" "${firmware_build_dir}"
 #    )
+
+   set(kaleidoscope_python_repo_slug "noseglasses/Kaleidoscope-Python")
+
+   # When Kaleidoscope-Testing is used to test Kaleidoscope-Python, 
+   # we make sure that the same branch is used as the one that is
+   # just tested.
+   #
+   if("$ENV{TRAVIS_REPO_SLUG}" STREQUAL "${kaleidoscope_python_repo_slug}")
+      message("Testing with travis. Using Kaleidoscope-Python branch $ENV{TRAVIS_BRANCH}")
+      set(kaleidoscope_python_branch "$ENV{TRAVIS_BRANCH}")
+   else()
+      set(kaleidoscope_python_branch "")
+   endif()
    
    # Kaleidoscope-Python is needed by all builds to ensure that 
    # we can build firmware libraries for the host target that
    # can be used by our python drivers
    #
    _add_repo(
-      "https://github.com/noseglasses/Kaleidoscope-Python.git"
-      ""
+      "https://github.com/${kaleidoscope_python_repo_slug}.git"
+      "${kaleidoscope_python_branch}"
       ""
    )
    
