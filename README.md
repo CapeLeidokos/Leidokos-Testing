@@ -1,8 +1,13 @@
 # Kaleidoscope-Testing
-This is a regression testing system for the Kaleidoscope firmware.
+Kaleidoscope-Testing is a regression testing system for the Kaleidoscope firmware.
 It allows to test individual Kaleidoscope modules (core, plugins, etc.).
 
-# Regression testing
+## Capeleido
+Kaleidoscope-Testing is an essential part of the Capeleido build, develop and testing infrastructure for the Kaleidoscope firmware.
+
+<img src="https://github.com/noseglasses/Capeleido/blob/master/Capeleido.svg?sanitize=true">
+
+## Regression testing
 Regression testing is of great importance to guarantee and maintain quality of
 software projects.
 
@@ -15,7 +20,7 @@ The philosophy behind regression testing is that one cannot have an infinite num
 nor is it possible to foresee what is going to malfunction. But it is at
 least possible to prevent that a bug bites twice.
 
-# Prerequisites
+## Prerequisites
 This module depends on a number of other software projects which are listed below. For those projects that require manual installation, install commands for a Ubuntu Linux system
 are provided.
 
@@ -27,7 +32,7 @@ namely [Kaleidoscope-CMake](https://github.com/noseglasses/Kaleidoscope-CMake), 
 to generate host specific python modules to wrap a x86 version of the
 firmware. These projects are automatically installed by Kaleidoscope-Testing.
 
-# Test specification
+## Test specification
 Every Kaleidoscope module can define an arbitrary number of tests. These tests are defined through a hierarchical testing file system that is best bundled with the module, so it can be maintained in sync with the changes of the module's implementation.
 
 The testing file system contains information about what functionality to
@@ -36,7 +41,7 @@ test as well as what firmware modules appart from the stock firmware are involve
 Please see the comment section of the file `python/prepare_testing.py`
 for a detailed description of the testing file system.
 
-# Under the hood
+## Under the hood
 It can help to understand what the testing system does under the hood. However, it is not necessary to understand the exact mode of operation to generate tests and even less to run tests.
 
 The regression testing process has three stages, a configuration stage, a build stage
@@ -57,7 +62,7 @@ During the testing stage, all CTest tests are executed.
 Kaleidoscope-Testing detects if several tests are based on a common
 firmware build. Such shared firmware configurations are generated only once to safe resources.
 
-# Usage
+## Usage
 The regression testing system is designed to operate on a single Kaleidoscope module. It is meant to be part of a continuous integration development process and can easily be triggered, e.g. by [Travis CI](https://travis-ci.org/).
 
 The tested module's git repository URL can be specified through the CMake variable
@@ -88,7 +93,7 @@ cmake --build .
 ctest
 ```
 
-# CMake configuration
+## CMake configuration
 The following CMake configuration variables affect the behavior of the regression testing system.
 
 | CMake Variable | Description |
