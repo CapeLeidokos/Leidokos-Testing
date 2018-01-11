@@ -228,14 +228,27 @@ function(kaleidoscope_firmware_build)
 #       COMMAND "${CMAKE_COMMAND}" -E copy_directory
 #          "${cache_firmware_build_dir}" "${firmware_build_dir}"
 #    )
+
+   set(leidokos_python_repo_slug "noseglasses/Leidokos-Python")
+
+   # When Kaleidoscope-Testing is used to test Leidokos-Python, 
+   # we make sure that the same branch is used as the one that is
+   # just tested.
+   #
+   if("$ENV{TRAVIS_REPO_SLUG}" STREQUAL "${leidokos_python_repo_slug}")
+      message("Testing with travis. Using Leidokos-Python branch $ENV{TRAVIS_BRANCH}")
+      set(leidokos_python_branch "$ENV{TRAVIS_BRANCH}")
+   else()
+      set(leidokos_python_branch "")
+   endif()
    
    # Leidokos-Python is needed by all builds to ensure that 
    # we can build firmware libraries for the host target that
    # can be used by our python drivers
    #
    _add_repo(
-      "https://github.com/noseglasses/Leidokos-Python.git"
-      ""
+      "https://github.com/${leidokos_python_repo_slug}.git"
+      "${leidokos_python_branch}"
       ""
    )
    

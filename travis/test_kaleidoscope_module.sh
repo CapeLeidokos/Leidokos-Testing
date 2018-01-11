@@ -28,13 +28,20 @@ CUR_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
 if [ "$#" -gt 0 ]; then
    module_git_url=$1
-else
+elif [ -n "${TRAVIS_PULL_REQUEST_SLUG}" ]; then
+   module_git_url="https://github.com/${TRAVIS_PULL_REQUEST_SLUG}.git"
+elif [ -n "${TRAVIS_REPO_SLUG}" ]; then
    module_git_url="https://github.com/${TRAVIS_REPO_SLUG}.git"
+else 
+   echo "No module git url specified"
+   exit 1
 fi
 
 kaleidoscope_testing_dir="${CUR_DIR}/.."
 
-if [ -n "${TRAVIS_BRANCH}" ]; then
+if [ -n "${TRAVIS_PULL_REQUEST_BRANCH}" ]; then
+   git_branch="${TRAVIS_PULL_REQUEST_BRANCH}"
+elif [ -n "${TRAVIS_BRANCH}" ]; then
    git_branch="${TRAVIS_BRANCH}"
 else
    git_branch="master"
