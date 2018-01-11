@@ -69,7 +69,7 @@
 # a common firmware build to minimize the amount of build overhead.
 # The firmware is build to run on the host system (x86) and wrapped
 # in a shared library that can be loaded as a Python module.
-# The latter is done using the Kaleidoscope-Python-Wrapper.
+# The latter is done using the Leidokos-Python-Wrapper.
 #
 # The actual name of a test is generated as a combination of the names
 # that are generated on the different levels of the testing directory

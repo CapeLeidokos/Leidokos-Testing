@@ -229,12 +229,12 @@ function(kaleidoscope_firmware_build)
 #          "${cache_firmware_build_dir}" "${firmware_build_dir}"
 #    )
    
-   # Kaleidoscope-Python is needed by all builds to ensure that 
+   # Leidokos-Python is needed by all builds to ensure that 
    # we can build firmware libraries for the host target that
    # can be used by our python drivers
    #
    _add_repo(
-      "https://github.com/noseglasses/Kaleidoscope-Python.git"
+      "https://github.com/noseglasses/Leidokos-Python.git"
       ""
       ""
    )
@@ -368,7 +368,7 @@ directory is, however, non-existent")
       "${cmake_scripts_dir}/build_firmware_${args_BUILD_ID}.script.cmake")
       
    # Allow to pass certain variables that are specified at the command line of
-   # Kaleidoscope-Testing, on to Kaleidoscope-Python.
+   # Kaleidoscope-Testing, on to Leidokos-Python.
    #
    function(_init_cmake_variable
       var_
@@ -399,7 +399,7 @@ _execute_process(
    COMMAND \"${CMAKE_COMMAND}\" 
       \"-DKALEIDOSCOPE_FIRMWARE_SKETCH=${args_FIRMWARE_SKETCH}\"
       ${add_cmd_line}
-      \"${firmware_libraries_dir}/Kaleidoscope-Python\"
+      \"${firmware_libraries_dir}/Leidokos-Python\"
    WORKING_DIRECTORY \"${firmware_build_dir}\"
 )
 
@@ -469,7 +469,7 @@ function(kaleidoscope_test)
    file(WRITE "${test_driver_script}" "\
 include(\"${CMAKE_SOURCE_DIR}/cmake/execute_process.cmake\")
 
-set(ENV{PYTHONPATH} \"${firmware_build_dir}:${firmware_build_dir}/hardware/keyboardio/avr/libraries/Kaleidoscope-Python/python\")
+set(ENV{PYTHONPATH} \"${firmware_build_dir}:${firmware_build_dir}/hardware/keyboardio/avr/libraries/Leidokos-Python/python\")
 
 message(\"PYTHONPATH = \$ENV{PYTHONPATH}\")
 

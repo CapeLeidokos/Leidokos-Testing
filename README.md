@@ -23,7 +23,7 @@ are provided.
 * Python (sudo apt-get install python)
 
 There are two other projects, that Kaleidoscope-Testing heavily depends on,
-namely [Kaleidoscope-CMake](https://github.com/noseglasses/Kaleidoscope-CMake), used as a convenient build system and [Kaleidoscope-Python-Wrapper](https://github.com/noseglasses/Kaleidoscope-Python-Wrapper),
+namely [Leidokos-CMake](https://github.com/noseglasses/Leidokos-CMake), used as a convenient build system and [Leidokos-Python](https://github.com/noseglasses/Leidokos-Python),
 to generate host specific python modules to wrap a x86 version of the
 firmware. These projects are automatically installed by Kaleidoscope-Testing.
 
