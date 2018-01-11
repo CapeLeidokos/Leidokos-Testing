@@ -33,7 +33,9 @@ elif [ -n "${TRAVIS_PULL_REQUEST_SLUG}" ]; then
 elif [ -n "${TRAVIS_REPO_SLUG}" ]; then
    module_git_url="https://github.com/${TRAVIS_REPO_SLUG}.git"
 else 
-   echo "No module git url specified"
+   echo "No module git URL specified"
+   echo "Either pass the URL as first argument to this script or define"
+   echo "one of the environment variable TRAVIS_REPO_SLUG (as owner/repo)"
    exit 1
 fi
 
@@ -44,6 +46,8 @@ if [ -n "${TRAVIS_PULL_REQUEST_BRANCH}" ]; then
 elif [ -n "${TRAVIS_BRANCH}" ]; then
    git_branch="${TRAVIS_BRANCH}"
 else
+   echo "No testing branch specified, assuming master."
+   echo "Note: You can define the environment variable TRAVIS_BRANCH to set the branch."
    git_branch="master"
 fi
 
