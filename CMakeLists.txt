@@ -1,5 +1,5 @@
 # -*- mode: cmake -*-
-# Kaleidoscope-Testing -- Testing framework for the Kaleidoscope firmware
+# Leidokos-Testing -- Testing framework for the Kaleidoscope firmware
 # Copyright (C) 2017 noseglasses (shinynoseglasses@github.com)
 #
 # This program is free software: you can redistribute it and/or modify
@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
  
-project(Kaleidoscope-Testing)
+project(Leidokos-Testing)
 cmake_minimum_required(VERSION 2.8)
 
 # Use a custom execute_process wrapper that does proper error reporting 
@@ -90,7 +90,7 @@ find_package(PythonInterp REQUIRED)
 
 if(NOT PYTHONINTERP_FOUND)
    message(SEND_ERROR 
-"Kaleidoscope-Testing requires a Python interpreter to prepare the testing \
+"Leidokos-Testing requires a Python interpreter to prepare the testing \
 infrastructure. If you have installed python in a non standard location, \
 please configure the CMake build system accordingly. See the documentation \
 about the FindPythonInterp module at \
@@ -229,26 +229,26 @@ function(kaleidoscope_firmware_build)
 #          "${cache_firmware_build_dir}" "${firmware_build_dir}"
 #    )
 
-   set(kaleidoscope_python_repo_slug "noseglasses/Kaleidoscope-Python")
+   set(leidokos_python_repo_slug "noseglasses/Leidokos-Python")
 
-   # When Kaleidoscope-Testing is used to test Kaleidoscope-Python, 
+   # When Leidokos-Testing is used to test Leidokos-Python, 
    # we make sure that the same branch is used as the one that is
    # just tested.
    #
-   if("$ENV{TRAVIS_REPO_SLUG}" STREQUAL "${kaleidoscope_python_repo_slug}")
-      message("Testing with travis. Using Kaleidoscope-Python branch $ENV{TRAVIS_BRANCH}")
-      set(kaleidoscope_python_branch "$ENV{TRAVIS_BRANCH}")
+   if("$ENV{TRAVIS_REPO_SLUG}" STREQUAL "${leidokos_python_repo_slug}")
+      message("Testing with travis. Using Leidokos-Python branch $ENV{TRAVIS_BRANCH}")
+      set(leidokos_python_branch "$ENV{TRAVIS_BRANCH}")
    else()
-      set(kaleidoscope_python_branch "")
+      set(leidokos_python_branch "")
    endif()
    
-   # Kaleidoscope-Python is needed by all builds to ensure that 
+   # Leidokos-Python is needed by all builds to ensure that 
    # we can build firmware libraries for the host target that
    # can be used by our python drivers
    #
    _add_repo(
-      "https://github.com/${kaleidoscope_python_repo_slug}.git"
-      "${kaleidoscope_python_branch}"
+      "https://github.com/${leidokos_python_repo_slug}.git"
+      "${leidokos_python_branch}"
       ""
    )
    
@@ -381,7 +381,7 @@ directory is, however, non-existent")
       "${cmake_scripts_dir}/build_firmware_${args_BUILD_ID}.script.cmake")
       
    # Allow to pass certain variables that are specified at the command line of
-   # Kaleidoscope-Testing, on to Kaleidoscope-Python.
+   # Leidokos-Testing, on to Leidokos-Python.
    #
    function(_init_cmake_variable
       var_
@@ -412,7 +412,7 @@ _execute_process(
    COMMAND \"${CMAKE_COMMAND}\" 
       \"-DKALEIDOSCOPE_FIRMWARE_SKETCH=${args_FIRMWARE_SKETCH}\"
       ${add_cmd_line}
-      \"${firmware_libraries_dir}/Kaleidoscope-Python\"
+      \"${firmware_libraries_dir}/Leidokos-Python\"
    WORKING_DIRECTORY \"${firmware_build_dir}\"
 )
 
@@ -482,7 +482,7 @@ function(kaleidoscope_test)
    file(WRITE "${test_driver_script}" "\
 include(\"${CMAKE_SOURCE_DIR}/cmake/execute_process.cmake\")
 
-set(ENV{PYTHONPATH} \"${firmware_build_dir}:${firmware_build_dir}/hardware/keyboardio/avr/libraries/Kaleidoscope-Python/python\")
+set(ENV{PYTHONPATH} \"${firmware_build_dir}:${firmware_build_dir}/hardware/keyboardio/avr/libraries/Leidokos-Python/python\")
 
 message(\"PYTHONPATH = \$ENV{PYTHONPATH}\")
 

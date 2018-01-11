@@ -1,11 +1,11 @@
-# Kaleidoscope-Testing
-Kaleidoscope-Testing is a regression testing system for the Kaleidoscope firmware.
+# Leidokos-Testing
+Leidokos-Testing is a regression testing system for the Kaleidoscope firmware.
 It allows to test individual Kaleidoscope modules (core, plugins, etc.).
 
-## Capeleido
-Kaleidoscope-Testing is an essential part of the Capeleido build, develop and testing infrastructure for the Kaleidoscope firmware.
+## CapeLeidokos
+Leidokos-Testing is an essential part of the CapeLeidokos build, develop and testing infrastructure for the Kaleidoscope firmware.
 
-<img src="https://github.com/noseglasses/Capeleido/blob/master/Capeleido.svg?sanitize=true">
+<img src="https://github.com/noseglasses/CapeLeidokos/blob/master/CapeLeidokos.svg?sanitize=true">
 
 ## Regression testing
 Regression testing is of great importance to guarantee and maintain quality of
@@ -27,10 +27,10 @@ are provided.
 * CMake (sudo apt-get install cmake)
 * Python (sudo apt-get install python)
 
-There are two other projects, that Kaleidoscope-Testing heavily depends on,
-namely [Kaleidoscope-CMake](https://github.com/noseglasses/Kaleidoscope-CMake), used as a convenient build system and [Kaleidoscope-Python-Wrapper](https://github.com/noseglasses/Kaleidoscope-Python-Wrapper),
+There are two other projects, that Leidokos-Testing heavily depends on,
+namely [Leidokos-CMake](https://github.com/noseglasses/Leidokos-CMake), used as a convenient build system and [Leidokos-Python](https://github.com/noseglasses/Leidokos-Python),
 to generate host specific python modules to wrap a x86 version of the
-firmware. These projects are automatically installed by Kaleidoscope-Testing.
+firmware. These projects are automatically installed by Leidokos-Testing.
 
 ## Test specification
 Every Kaleidoscope module can define an arbitrary number of tests. These tests are defined through a hierarchical testing file system that is best bundled with the module, so it can be maintained in sync with the changes of the module's implementation.
@@ -59,7 +59,7 @@ During the build stage, when e.g. `make` is executed a mimimum set of firmwares 
 
 During the testing stage, all CTest tests are executed.
 
-Kaleidoscope-Testing detects if several tests are based on a common
+Leidokos-Testing detects if several tests are based on a common
 firmware build. Such shared firmware configurations are generated only once to safe resources.
 
 ## Usage
@@ -74,7 +74,7 @@ module `Kaleidoscope-Transparent-Aluminum`.
 
 ```bash
 git clone --recursive \
- https://github.com/noseglasses/Kaleidoscope-Testing.git
+ https://github.com/noseglasses/Leidokos-Testing.git
 
 mkdir testing
 cd testing
@@ -82,7 +82,7 @@ cd testing
 # Configuration stage
 #
 cmake -DKALEIDOSCOPE_TESTING_TARGET_URL=<URL of Kaleidoscope-Transparent-Aluminum> \
- ./Kaleidoscope-Testing
+ ./Leidokos-Testing
 
 # Build stage
 #
