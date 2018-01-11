@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 # -*- mode: python -*-
-# Kaleidoscope-Testing -- Testing framework for the Kaleidoscope firmware
+# Leidokos-Testing -- Testing framework for the Kaleidoscope firmware
 # Copyright (C) 2017 noseglasses (shinynoseglasses@github.com)
 #
 # This program is free software: you can redistribute it and/or modify

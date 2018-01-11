@@ -1,5 +1,5 @@
 # -*- mode: cmake -*-
-# Kaleidoscope-Testing -- Testing framework for the Kaleidoscope firmware
+# Leidokos-Testing -- Testing framework for the Kaleidoscope firmware
 # Copyright (C) 2017 noseglasses (shinynoseglasses@github.com)
 #
 # This program is free software: you can redistribute it and/or modify
@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
  
-project(Kaleidoscope-Testing)
+project(Leidokos-Testing)
 cmake_minimum_required(VERSION 2.8)
 
 # Use a custom execute_process wrapper that does proper error reporting 
@@ -90,7 +90,7 @@ find_package(PythonInterp REQUIRED)
 
 if(NOT PYTHONINTERP_FOUND)
    message(SEND_ERROR 
-"Kaleidoscope-Testing requires a Python interpreter to prepare the testing \
+"Leidokos-Testing requires a Python interpreter to prepare the testing \
 infrastructure. If you have installed python in a non standard location, \
 please configure the CMake build system accordingly. See the documentation \
 about the FindPythonInterp module at \
@@ -231,7 +231,7 @@ function(kaleidoscope_firmware_build)
 
    set(leidokos_python_repo_slug "noseglasses/Leidokos-Python")
 
-   # When Kaleidoscope-Testing is used to test Leidokos-Python, 
+   # When Leidokos-Testing is used to test Leidokos-Python, 
    # we make sure that the same branch is used as the one that is
    # just tested.
    #
@@ -381,7 +381,7 @@ directory is, however, non-existent")
       "${cmake_scripts_dir}/build_firmware_${args_BUILD_ID}.script.cmake")
       
    # Allow to pass certain variables that are specified at the command line of
-   # Kaleidoscope-Testing, on to Leidokos-Python.
+   # Leidokos-Testing, on to Leidokos-Python.
    #
    function(_init_cmake_variable
       var_
