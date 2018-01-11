@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
  
-project(Leidokos-Testing)
+project(Leidokos-Testing CXX)
 cmake_minimum_required(VERSION 2.8)
 
 # Use a custom execute_process wrapper that does proper error reporting 
@@ -366,6 +366,7 @@ directory is, however, non-existent")
             "setup library in ${lib_dir}"
             COMMAND "${CMAKE_COMMAND}"
                "-DCMAKE_SOURCE_DIR=${lib_dir}"
+               "-DKALEIDOSCOPE_VIRTUAL_BUILD=TRUE"
                -P "${setup_script}"
             WORKING_DIRECTORY "${lib_dir}"
          )
