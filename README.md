@@ -66,8 +66,8 @@ firmware build. Such shared firmware configurations are generated only once to s
 The regression testing system is designed to operate on a single Kaleidoscope module. It is meant to be part of a continuous integration development process and can easily be triggered, e.g. by [Travis CI](https://travis-ci.org/).
 
 The tested module's git repository URL can be specified through the CMake variable
-`KALEIDOSCOPE_TESTING_TARGET_URL` or, alternatively, via the path
-to an already cloned version of the module (`KALEIDOSCOPE_TESTING_TREE_ROOT`).
+`LEIDOKOS_TESTING_TARGET_URL` or, alternatively, via the path
+to an already cloned version of the module (`LEIDOKOS_TESTING_TREE_ROOT`).
 
 The following example demonstrates how to run the testing system for a ficticiuous Kaleidoscope
 module `Kaleidoscope-Transparent-Aluminum`.
@@ -81,7 +81,7 @@ cd testing
 
 # Configuration stage
 #
-cmake -DKALEIDOSCOPE_TESTING_TARGET_URL=<URL of Kaleidoscope-Transparent-Aluminum> \
+cmake -DLEIDOKOS_TESTING_TARGET_URL=<URL of Kaleidoscope-Transparent-Aluminum> \
  ./Leidokos-Testing
 
 # Build stage
@@ -98,7 +98,7 @@ The following CMake configuration variables affect the behavior of the regressio
 
 | CMake Variable | Description |
 |:-------------------------------- |:---------------------------------------- |
-| KALEIDOSCOPE_TESTING_TARGET_URL  | The URL of the git repository of the Kaleidoscope module to test |
-| KALEIDOSCOPE_TESTING_TARGET_BRANCH | The branch of the target repo to checkout for testing |
-| KALEIDOSCOPE_TESTING_TREE_ROOT   | The root directory of the Kaleidoscope module to be tested. This is only effective if KALEIDOSCOPE_TESTING_TARGET_URL is empty. |
-| KALEIDOSCOPE_TESTING_AUTO_ADD_TESTED_REPO | This flag defines whether the tested repo is supposed to be automatically added to the firmware build modules |
+| LEIDOKOS_TESTING_TARGET_URL  | The URL of the git repository of the Kaleidoscope module to test |
+| LEIDOKOS_TESTING_TARGET_BRANCH | The branch of the target repo to checkout for testing |
+| LEIDOKOS_TESTING_TREE_ROOT   | The root directory of the Kaleidoscope module to be tested. This is only effective if LEIDOKOS_TESTING_TARGET_URL is empty. |
+| LEIDOKOS_TESTING_AUTO_ADD_TESTED_REPO | This flag defines whether the tested repo is supposed to be automatically added to the firmware build modules |

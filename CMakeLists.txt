@@ -32,17 +32,17 @@ endif()
 
 # The URL of the Kaleidoscope module to test
 #
-set(KALEIDOSCOPE_TESTING_TARGET_URL "" CACHE STRING 
+set(LEIDOKOS_TESTING_TARGET_URL "" CACHE STRING 
    "The URL of a git repository that represents the Kaleidoscope module to test")
    
-if(NOT "${KALEIDOSCOPE_TESTING_TARGET_BRANCH}" STREQUAL "")
-   set(branch_spec -b "${KALEIDOSCOPE_TESTING_TARGET_BRANCH}")
+if(NOT "${LEIDOKOS_TESTING_TARGET_BRANCH}" STREQUAL "")
+   set(branch_spec -b "${LEIDOKOS_TESTING_TARGET_BRANCH}")
 endif()
 
-if(NOT "${KALEIDOSCOPE_TESTING_TARGET_URL}" STREQUAL "")
+if(NOT "${LEIDOKOS_TESTING_TARGET_URL}" STREQUAL "")
 
    get_filename_component(target_repo_dir_basename 
-      "${KALEIDOSCOPE_TESTING_TARGET_URL}" NAME_WE)
+      "${LEIDOKOS_TESTING_TARGET_URL}" NAME_WE)
 
    set(testing_target_dir "${CMAKE_BINARY_DIR}/target_module")
 
@@ -52,13 +52,13 @@ if(NOT "${KALEIDOSCOPE_TESTING_TARGET_URL}" STREQUAL "")
    
       file(MAKE_DIRECTORY "${testing_target_dir}")
    
-      message("Cloning git repository ${KALEIDOSCOPE_TESTING_TARGET_URL}")
+      message("Cloning git repository ${LEIDOKOS_TESTING_TARGET_URL}")
       _execute_process(
-         "clone Kaleidoscope module \"${KALEIDOSCOPE_TESTING_TARGET_URL}\" \
+         "clone Kaleidoscope module \"${LEIDOKOS_TESTING_TARGET_URL}\" \
 that is supposed to be tested"
          COMMAND "${GIT_EXECUTABLE}" clone 
             ${branch_spec}
-            --recursive "${KALEIDOSCOPE_TESTING_TARGET_URL}"
+            --recursive "${LEIDOKOS_TESTING_TARGET_URL}"
          WORKING_DIRECTORY "${testing_target_dir}"
       )
    else()
@@ -73,13 +73,13 @@ endif()
 # allow defining a directory that represents the root of a testing
 # files system.
 #
-set(KALEIDOSCOPE_TESTING_TREE_ROOT 
+set(LEIDOKOS_TESTING_TREE_ROOT 
    "${default_module_dir}/testing" CACHE PATH 
    "The testing directory root of the module to be tested") 
    
-if(NOT EXISTS "${KALEIDOSCOPE_TESTING_TREE_ROOT}")
+if(NOT EXISTS "${LEIDOKOS_TESTING_TREE_ROOT}")
    message(FATAL_ERROR "Unable to find testing tree root \
-KALEIDOSCOPE_TESTING_TREE_ROOT=\"${KALEIDOSCOPE_TESTING_TREE_ROOT}\"")
+LEIDOKOS_TESTING_TREE_ROOT=\"${LEIDOKOS_TESTING_TREE_ROOT}\"")
 endif()
 
 # Python is needed to parse the testing file system and generate
@@ -118,7 +118,7 @@ set(cmake_test_definitions_file "${CMAKE_BINARY_DIR}/test_definitions.cmake")
 _execute_process(
    "prepare test file"
    COMMAND "${PYTHON_EXECUTABLE}" "${prepare_testing_file}"
-      -d "${KALEIDOSCOPE_TESTING_TREE_ROOT}"
+      -d "${LEIDOKOS_TESTING_TREE_ROOT}"
       -c "${cmake_test_definitions_file}"
 )
 
@@ -252,12 +252,12 @@ function(kaleidoscope_firmware_build)
       ""
    )
    
-   if(KALEIDOSCOPE_TESTING_AUTO_ADD_TESTED_REPO)
-      message("   KALEIDOSCOPE_TESTING_AUTO_ADD_TESTED_REPO=${KALEIDOSCOPE_TESTING_AUTO_ADD_TESTED_REPO}")
-      message("   Adding ${KALEIDOSCOPE_TESTING_TARGET_URL} to firmware modules")
+   if(LEIDOKOS_TESTING_AUTO_ADD_TESTED_REPO)
+      message("   LEIDOKOS_TESTING_AUTO_ADD_TESTED_REPO=${LEIDOKOS_TESTING_AUTO_ADD_TESTED_REPO}")
+      message("   Adding ${LEIDOKOS_TESTING_TARGET_URL} to firmware modules")
       _add_repo(
-         "${KALEIDOSCOPE_TESTING_TARGET_URL}"
-         "${KALEIDOSCOPE_TESTING_TARGET_BRANCH}"
+         "${LEIDOKOS_TESTING_TARGET_URL}"
+         "${LEIDOKOS_TESTING_TARGET_BRANCH}"
          ""
       )
    endif()

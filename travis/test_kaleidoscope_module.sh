@@ -37,7 +37,7 @@ else
    exit 1
 fi
 
-kaleidoscope_testing_dir="${CUR_DIR}/.."
+leidokos_testing_dir="${CUR_DIR}/.."
 
 if [ -n "${TRAVIS_PULL_REQUEST_BRANCH}" ]; then
    git_branch="${TRAVIS_PULL_REQUEST_BRANCH}"
@@ -48,12 +48,12 @@ else
 fi
 
 cmake \
-   "-DKALEIDOSCOPE_TESTING_TARGET_URL=${module_git_url}" \
-   "-DKALEIDOSCOPE_TESTING_TARGET_BRANCH=${git_branch}" \
-   "-DKALEIDOSCOPE_TESTING_AUTO_ADD_TESTED_REPO=TRUE" \
+   "-DLEIDOKOS_TESTING_TARGET_URL=${module_git_url}" \
+   "-DLEIDOKOS_TESTING_TARGET_BRANCH=${git_branch}" \
+   "-DLEIDOKOS_TESTING_AUTO_ADD_TESTED_REPO=TRUE" \
    "-DBoost_PYTHON_LIBRARY_RELEASE=/usr/lib/x86_64-linux-gnu/libboost_python-py34.so" \
    "-DPYTHON_EXECUTABLE=/usr/bin/python3" \
-   ${kaleidoscope_testing_dir}
+   ${leidokos_testing_dir}
 
 cmake --build .
 ctest --output-on-failure
