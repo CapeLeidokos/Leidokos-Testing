@@ -5,7 +5,7 @@ It allows to test individual Kaleidoscope modules (core, plugins, etc.).
 ## CapeLeidokos
 Leidokos-Testing is an essential part of the CapeLeidokos build, develop and testing infrastructure for the Kaleidoscope firmware.
 
-<img src="https://github.com/noseglasses/CapeLeidokos/blob/master/CapeLeidokos.svg?sanitize=true">
+<img src="https://github.com/CapeLeidokos/CapeLeidokos/blob/master/CapeLeidokos.svg?sanitize=true">
 
 ## Regression testing
 Regression testing is of great importance to guarantee and maintain quality of
@@ -28,7 +28,7 @@ are provided.
 * Python (sudo apt-get install python)
 
 There are two other projects, that Leidokos-Testing heavily depends on,
-namely [Leidokos-CMake](https://github.com/noseglasses/Leidokos-CMake), used as a convenient build system and [Leidokos-Python](https://github.com/noseglasses/Leidokos-Python),
+namely [Leidokos-CMake](https://github.com/CapeLeidokos/Leidokos-CMake), used as a convenient build system and [Leidokos-Python](https://github.com/CapeLeidokos/Leidokos-Python),
 to generate host specific python modules to wrap a x86 version of the
 firmware. These projects are automatically installed by Leidokos-Testing.
 
@@ -74,7 +74,7 @@ module `Kaleidoscope-Transparent-Aluminum`.
 
 ```bash
 git clone --recursive \
- https://github.com/noseglasses/Leidokos-Testing.git
+ https://github.com/CapeLeidokos/Leidokos-Testing.git
 
 mkdir testing
 cd testing

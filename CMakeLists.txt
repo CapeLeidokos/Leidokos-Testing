@@ -193,7 +193,7 @@ function(kaleidoscope_firmware_build)
    #
    file(MAKE_DIRECTORY "${firmware_build_dir}/hardware/keyboardio")
       
-   set(arduino_boards_url "https://github.com/noseglasses/Arduino-Boards.git")
+   set(arduino_boards_url "https://github.com/CapeLeidokos/Arduino-Boards.git")
    
 #    if(NOT EXISTS "${cache_firmware_build_dir}/hardware/keyboardio/avr")
 #    
@@ -229,7 +229,7 @@ function(kaleidoscope_firmware_build)
 #          "${cache_firmware_build_dir}" "${firmware_build_dir}"
 #    )
 
-   set(leidokos_python_repo_slug "noseglasses/Leidokos-Python")
+   set(leidokos_python_repo_slug "CapeLeidokos/Leidokos-Python")
 
    # When Leidokos-Testing is used to test Leidokos-Python, 
    # we make sure that the same branch is used as the one that is
