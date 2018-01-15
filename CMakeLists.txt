@@ -64,6 +64,13 @@ that is supposed to be tested"
    else()
       message("Git repository already cloned to \
 ${testing_target_dir}/${target_repo_dir_basename}")
+      _execute_process(
+         "update Kaleidoscope module \"${LEIDOKOS_TESTING_TARGET_URL}\" \
+that is supposed to be tested"
+         COMMAND "${GIT_EXECUTABLE}" checkout --recurse-submodules
+            "origin/${branch_spec}"
+         WORKING_DIRECTORY "${testing_target_dir}"
+      )
    endif()
    
    set(default_module_dir "${testing_target_dir}/${target_repo_dir_basename}")
@@ -179,7 +186,7 @@ endmacro()
 function(kaleidoscope_firmware_build)
 
    set(options "")
-   set(one_value_args "BUILD_ID" "DIGEST" "FIRMWARE_SKETCH")
+   set(one_value_args "BUILD_ID" "DIGEST" "FIRMWARE_SKETCH" "BOARDS_URL" "BOARDS_COMMIT")
    set(multi_value_args URL COMMIT NAME)
    
    cmake_parse_arguments(args "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN} )
@@ -193,7 +200,19 @@ function(kaleidoscope_firmware_build)
    #
    file(MAKE_DIRECTORY "${firmware_build_dir}/hardware/keyboardio")
       
-   set(arduino_boards_url "https://github.com/CapeLeidokos/Arduino-Boards.git")
+   if(NOT "${args_BOARDS_URL}" STREQUAL "")
+      set(arduino_boards_url "${args_BOARDS_URL}")
+   else()
+      
+      set(arduino_boards_url "https://github.com/CapeLeidokos/Arduino-Boards.git")
+   endif()
+   
+   if(NOT "${args_BOARDS_COMMIT}" STREQUAL "")
+      set(arduino_boards_commit "${args_BOARDS_COMMIT}")
+   else()
+      
+      set(arduino_boards_commit "master")
+   endif()
    
 #    if(NOT EXISTS "${cache_firmware_build_dir}/hardware/keyboardio/avr")
 #    
@@ -209,15 +228,26 @@ function(kaleidoscope_firmware_build)
 #       )
 #    endif()
    
+   # Only clone and checkout the boards directory once. 
+   # During consecutive configuration runs, the modules 
+   # will be updated individually.
+   #
    if(NOT EXISTS "${firmware_build_dir}/hardware/keyboardio/avr")
       
       _execute_process(
-         "clone ${arduino_boards_url} to be cached"
+         "clone ${arduino_boards_url}"
          COMMAND "${GIT_EXECUTABLE}" clone
-            -b regression_testing
+#             -b "${arduino_boards_commit}"
             --recursive "${arduino_boards_url}"
             hardware/keyboardio/avr
          WORKING_DIRECTORY "${firmware_build_dir}"
+      )
+      
+      _execute_process(
+         "check out ${arduino_boards_commit}"
+         COMMAND "${GIT_EXECUTABLE}" checkout
+            "${arduino_boards_commit}"
+         WORKING_DIRECTORY "${firmware_build_dir}/hardware/keyboardio/avr"
       )
    endif()
    
@@ -293,7 +323,7 @@ There are ${n_urls} URLs (${args_URL}) and ${n_commits} (${args_COMMIT}) commits
          list(GET args_NAME ${id} name)
          
          if("${commit}" STREQUAL "__NONE__")
-            set(commit "")
+            set(commit "origin/master")
          endif()
          if("${name}" STREQUAL "__NONE__")
             set(name "")
@@ -317,6 +347,8 @@ directory is, however, non-existent")
             file(REMOVE_RECURSE "${kaleidoscope_module_path}")
          endif()
          
+         set(just_cloned FALSE)
+         
          # If an url is provided, it is cloned to hardware/keyboardio/avr/libraries.
          #
          if(NOT "${url}" STREQUAL "")
@@ -331,6 +363,8 @@ directory is, however, non-existent")
                      "${url}"
                   WORKING_DIRECTORY "${firmware_libraries_dir}"
                )
+               
+               set(just_cloned TRUE)
             endif()
          endif()
          
@@ -339,18 +373,24 @@ directory is, however, non-existent")
          if("${name}" STREQUAL "")
             _configuration_error_build(${args_BUILD_ID} "Empty name")
          endif()
+         
+         if(NOT just_cloned)
+         
+            _execute_process(
+               "fetch remote of module ${name}"
+               COMMAND "${GIT_EXECUTABLE}" fetch 
+               WORKING_DIRECTORY "${firmware_libraries_dir}/${name}"
+            )
+         endif()
                
          # If a commit is defined, it is checked out for the respective module.
          #
-         if(NOT "${commit}" STREQUAL "")
-         
-            message("   Checking out ${commit} of module ${name}")
-            _execute_process(
-               "check out commit ${commit} in module ${name}"
-               COMMAND "${GIT_EXECUTABLE}" checkout ${commit}
-               WORKING_DIRECTORY "${firmware_libraries_dir}/${name}"
-            )
-          endif()
+         message("   Checking out ${commit} of module ${name}")
+         _execute_process(
+            "check out commit ${commit} in module ${name}"
+            COMMAND "${GIT_EXECUTABLE}" checkout --recurse-submodules ${commit}
+            WORKING_DIRECTORY "${firmware_libraries_dir}/${name}"
+         )
       endforeach()
    endif()
    

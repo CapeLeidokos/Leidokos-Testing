@@ -545,7 +545,17 @@ class TestNode(object):
       new_despription = my_yaml.get("description") 
       if new_despription:
          self.description = Property(new_despription)
-         self.description.attach(self) 
+         self.description.attach(self)
+         
+      new_boards_url = my_yaml.get("boards_url") 
+      if new_boards_url:
+         self.boards_url = Property(new_boards_url)
+         self.boards_url.attach(self)
+         
+      new_boards_commit = my_yaml.get("boards_commit") 
+      if new_boards_commit:
+         self.boards_commit = Property(new_boards_commit)
+         self.boards_commit.attach(self)
          
       new_modules = my_yaml.get("modules")
       if new_modules:
@@ -650,6 +660,8 @@ class TestNode(object):
       # setup.
       #
       self.useParentEntity("description")
+      self.useParentEntity("boards_url")
+      self.useParentEntity("boards_commit")
       self.useParentEntity("firmware_build")
        
       # The source path is the path that is searched
@@ -807,6 +819,10 @@ def export_as_cmake(cmake_filename,
    for digest, firmware_build in unique_firmware_builds_by_digest.items():
       cmake_file.write("kaleidoscope_firmware_build(\n")
       cmake_file.write("   BUILD_ID \"" + str(firmware_build.set_id) + "\"\n")
+      if hasattr(firmware_build, 'boards_url')
+            cmake_file.write("   BOARDS_URL \"" + str(firmware_build.boards_url) + "\"\n")
+      if hasattr(firmware_build, 'boards_commit')
+            cmake_file.write("   BOARDS_COMMIT \"" + str(firmware_build.boards_commit) + "\"\n")
       cmake_file.write("   DIGEST \"" + str(digest) + "\"\n")
       cmake_file.write("   FIRMWARE_SKETCH \"" + firmware_build.firmware_sketch.filename + "\"\n")
       for mod in firmware_build.modules:
