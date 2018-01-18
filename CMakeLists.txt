@@ -43,6 +43,7 @@ set(default_target_url "")
 set(detault_target_commit "master")
 
 if(NOT "$ENV{TRAVIS_REPO_SLUG}" STREQUAL "")
+   log("Travis testing in progress")
    set(default_target_url "https://github.com/$ENV{TRAVIS_REPO_SLUG}.git")
    set(detault_target_commit "$ENV{TRAVIS_COMMIT}")
 endif()
@@ -147,9 +148,13 @@ endif()
 
 if("${target_repo_dir_basename}" STREQUAL "Leidokos-Python")
    set(target_module_is_leidokos_python TRUE)
+   log("testing Leidokos-Python")
 else()
    set(target_module_is_leidokos_python FALSE)
 endif()
+
+log("target URL: ${LEIDOKOS_TESTING_TARGET_URL}")
+log("target commit: ${LEIDOKOS_TESTING_TARGET_COMMIT}")
    
 # Normally, the test specifications reside in directories below the
 # testing directory of the target module.
@@ -249,18 +254,7 @@ testing Leidokos-Python (target).")
 set(leidokos_python_url "${LEIDOKOS_TESTING_LEIDOKOS_PYTHON_URL}")
 set(leidokos_python_commit "${LEIDOKOS_TESTING_LEIDOKOS_PYTHON_COMMIT}")
 
-if("$ENV{TRAVIS_REPO_SLUG}" STREQUAL "${leidokos_python_repo_slug}")
-
-   # When testing with travis, environment variables are used 
-   # to define the target module/repo and the commit to test.
-
-   log("Testing with travis. Using Leidokos-Python branch $ENV{TRAVIS_COMMIT}")
-   
-   # We keep the default leidokos_python_url
-   
-   set(leidokos_python_commit "$ENV{TRAVIS_COMMIT}")
-   
-elseif(LEIDOKOS_TESTING_REUSE_TARGET_LEIDOKOS_PYTHON)
+if(LEIDOKOS_TESTING_REUSE_TARGET_LEIDOKOS_PYTHON)
 
    # Use the target repository as Leidokos-Python.
    #
