@@ -40,12 +40,18 @@ endif()
 # Consider testing with travis
 #
 set(default_target_url "")
-set(detault_target_commit "master")
+set(default_target_commit "master")
 
 if(NOT "$ENV{TRAVIS_REPO_SLUG}" STREQUAL "")
    log("Travis testing in progress")
    set(default_target_url "https://github.com/$ENV{TRAVIS_REPO_SLUG}.git")
-   set(detault_target_commit "$ENV{TRAVIS_COMMIT}")
+   if(NOT "$ENV{TRAVIS_PULL_REQUEST_BRANCH}" STREQUAL "")
+      set(default_target_commit "$ENV{TRAVIS_PULL_REQUEST_BRANCH}")
+   elseif(NOT "$ENV{TRAVIS_COMMIT}" STREQUAL "")
+      set(default_target_commit "$ENV{TRAVIS_COMMIT}")
+   else()
+      log(FATAL_ERROR "No travis commit available")
+   endif()
 endif()
 
 # The URL of the Kaleidoscope module to test
@@ -57,7 +63,7 @@ set(LEIDOKOS_TESTING_TARGET_URL "${default_target_url}" CACHE STRING
 # to be checked out, this can be set through variable
 # LEIDOKOS_TESTING_TARGET_COMMIT.
 #
-set(LEIDOKOS_TESTING_TARGET_COMMIT "${detault_target_commit}" CACHE STRING
+set(LEIDOKOS_TESTING_TARGET_COMMIT "${default_target_commit}" CACHE STRING
    "The git commit/branch/sha of the target module to be checked out for testing")
    
 if("${LEIDOKOS_TESTING_TARGET_URL}" STREQUAL "")
