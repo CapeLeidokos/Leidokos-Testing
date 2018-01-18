@@ -63,6 +63,9 @@ set(LEIDOKOS_TESTING_TARGET_COMMIT "${detault_target_commit}" CACHE STRING
 if("${LEIDOKOS_TESTING_TARGET_URL}" STREQUAL "")
    log(FATAL_ERROR "Empty LEIDOKOS_TESTING_TARGET_URL provided")
 endif()
+
+log("target URL: ${LEIDOKOS_TESTING_TARGET_URL}")
+log("target commit: ${LEIDOKOS_TESTING_TARGET_COMMIT}")
       
 # The target URL can be an existing path of the local
 # file system
@@ -152,9 +155,6 @@ if("${target_repo_dir_basename}" STREQUAL "Leidokos-Python")
 else()
    set(target_module_is_leidokos_python FALSE)
 endif()
-
-log("target URL: ${LEIDOKOS_TESTING_TARGET_URL}")
-log("target commit: ${LEIDOKOS_TESTING_TARGET_COMMIT}")
    
 # Normally, the test specifications reside in directories below the
 # testing directory of the target module.
