@@ -110,7 +110,7 @@ that is supposed to be tested"
    log("Local target module directory ${target_module_dir}")
    
    _execute_process(
-      "checking out commit of Kaleidoscope module \
+      "check out commit of Kaleidoscope module \
 \"${LEIDOKOS_TESTING_TARGET_URL}\" \
 that is supposed to be tested"
       COMMAND "${GIT_EXECUTABLE}" checkout origin/${LEIDOKOS_TESTING_TARGET_COMMIT} 
@@ -131,7 +131,7 @@ that is supposed to be tested"
    # Thus, we have to syncronize them before doing further updates.
    #
    _execute_process(
-      "syncing submodules of Kaleidoscope module \"${LEIDOKOS_TESTING_TARGET_URL}\""
+      "syncronize submodules of Kaleidoscope module \"${LEIDOKOS_TESTING_TARGET_URL}\""
       COMMAND "${GIT_EXECUTABLE}" submodule sync --recursive 
       WORKING_DIRECTORY "${target_module_dir}"
    )
@@ -400,7 +400,7 @@ function(kaleidoscope_firmware_build)
       )
       
       _execute_process(
-         "syncing boards submodules"
+         "syncronize boards submodules"
          COMMAND "${GIT_EXECUTABLE}" submodule sync --recursive
          WORKING_DIRECTORY "${firmware_build_dir}/hardware/keyboardio/avr"
       )
@@ -575,7 +575,7 @@ There are ${n_urls} URLs (${args_URL}) and ${n_commits} (${args_COMMIT}) commits
             WORKING_DIRECTORY "${firmware_libraries_dir}/${module_name}"
          )
          _execute_process(
-            "syncing submodules of module ${module_name}"
+            "syncronize submodules of module ${module_name}"
             COMMAND "${GIT_EXECUTABLE}" submodule sync --recursive
             WORKING_DIRECTORY "${firmware_libraries_dir}/${module_name}"
          )
@@ -776,7 +776,7 @@ set(ENV{PYTHONPATH} \"${firmware_build_dir}:${leidokos_python_module_search_path
 log(\"PYTHONPATH = \$ENV{PYTHONPATH}\")
 
 _execute_process(
-   \"running test firmware build ${args_TEST_ID}\"
+   \"run test firmware build ${args_TEST_ID}\"
    RESULT_VARIABLE test_result
    COMMAND \"${PYTHON_EXECUTABLE}\" \"${args_PYTHON_DRIVER}\" ${args_DRIVER_CMD_LINE_FLAGS} 
    WORKING_DIRECTORY \"${firmware_build_dir}\"
