@@ -41,7 +41,9 @@ fi
 
 leidokos_testing_dir="${CUR_DIR}/.."
 
-if [ -n "${TRAVIS_PULL_REQUEST_BRANCH}" ]; then
+if [ "$#" -gt 1 ]; then
+   git_branch=$2
+elif [ -n "${TRAVIS_PULL_REQUEST_BRANCH}" ]; then
    git_branch="${TRAVIS_PULL_REQUEST_BRANCH}"
 elif [ -n "${TRAVIS_BRANCH}" ]; then
    git_branch="${TRAVIS_BRANCH}"
