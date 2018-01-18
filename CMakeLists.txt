@@ -758,7 +758,7 @@ function(kaleidoscope_test)
    if(   target_module_is_leidokos_python
      AND LEIDOKOS_TESTING_TARGET_REPO_IS_FIRMWARE_MODULE
    )
-      set(leidokos_python_module_search_path "${target_module_dir}")
+      set(leidokos_python_module_search_path "${target_module_dir}/python")
    else()
       set(leidokos_python_module_search_path "${firmware_build_dir}/hardware/keyboardio/avr/libraries/Leidokos-Python/python")
    endif()
