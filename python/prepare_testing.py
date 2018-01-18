@@ -33,6 +33,7 @@
 #
 # - a name (without whitespaces)
 # - a description string
+# - driver command line parameters (optional)
 # - a python driver file (driver.py)
 # - a firmware sketch (sketch.ino)
 # - a set of custom modules, where every module can define
@@ -48,6 +49,8 @@
 #
 #   name: Test1
 #   description: Description
+#   driver_cmd_line_flags: <command line flags passed to 
+#                           the driver Python process>
 #   modules:
 #      - url: url1
 #        commit: commit1
@@ -248,10 +251,14 @@ class FirmwareBuild(Entity):
          self.modules = parent_build.modules
          self.digests = parent_build.digests
          self.firmware_sketch = parent_build.firmware_sketch
+         self.boards_url = parent_build.boards_url
+         self.boards_commit = parent_build.boards_commit
       else:
          self.modules = []
          self.digests = []
          self.firmware_sketch = None
+         self.boards_url = None
+         self.boards_commit = None
          
    # Checks if the firmware build is valid, i.e. well 
    # defined
@@ -346,6 +353,8 @@ class FirmwareBuild(Entity):
       for digest in digests:
          m.update(str(digest))
          
+      m.update(str(self.boards_url).encode('utf-8'))
+      m.update(str(self.boards_commit).encode('utf-8'))
       m.update(self.firmware_sketch.filename.encode('utf-8'))
          
       return m.hexdigest()
@@ -369,6 +378,10 @@ class TestNode(object):
       #
       self.name = None
       self.description = None
+      self.driver_cmd_line_flags = None
+      
+      self.boards_url = None
+      self.boards_commit = None
       
       # Defines if tests are supposed to be run on this level
       #
@@ -495,8 +508,7 @@ class TestNode(object):
                or not (self.firmware_build.firmware_sketch.filename \
                               == firmware_sketch_file):
                
-            if not self.needs_own_firmware_build:
-               self.cloneFirmwareBuild()
+            self.conditionallyCloneFirmwareBuild()
          
             self.firmware_build.firmware_sketch \
                = FirmwareSketch(firmware_sketch_file)
@@ -547,15 +559,31 @@ class TestNode(object):
          self.description = Property(new_despription)
          self.description.attach(self)
          
+      new_driver_cmd_line_flags = my_yaml.get("driver_cmd_line_flags") 
+      if new_driver_cmd_line_flags:
+         self.driver_cmd_line_flags = Property(new_driver_cmd_line_flags)
+         self.driver_cmd_line_flags.attach(self)
+         
       new_boards_url = my_yaml.get("boards_url") 
       if new_boards_url:
-         self.boards_url = Property(new_boards_url)
-         self.boards_url.attach(self)
+         
+         if not self.firmware_build.boards_url \
+               or not (self.firmware_build.firmware_sketch.boards_url \
+                              == new_boards_url):
+               
+            self.conditionallyCloneFirmwareBuild()
+         
+            self.firmware_build.boards_url = new_boards_url
          
       new_boards_commit = my_yaml.get("boards_commit") 
       if new_boards_commit:
-         self.boards_commit = Property(new_boards_commit)
-         self.boards_commit.attach(self)
+         if not self.firmware_build.boards_commit \
+               or not (self.firmware_build.firmware_sketch.boards_commit \
+                              == new_boards_commit):
+               
+            self.conditionallyCloneFirmwareBuild()
+         
+            self.firmware_build.boards_commit = new_boards_commit
          
       new_modules = my_yaml.get("modules")
       if new_modules:
@@ -577,11 +605,7 @@ class TestNode(object):
                
                # And this path does not have its own firmware build...
                #
-               if not self.needs_own_firmware_build:
-                  
-                  # We generate an individual firmware build for this node
-                  #
-                  self.cloneFirmwareBuild()
+               self.conditionallyCloneFirmwareBuild()
                   
                self.firmware_build.addModule(new_module)
                
@@ -595,6 +619,10 @@ class TestNode(object):
       self.needs_own_firmware_build = True
       
       #sys.stdout.write("FB after clone: " + str(id(self.firmware_build)) + "\n")
+      
+   def conditionallyCloneFirmwareBuild(self):
+      if not self.needs_own_firmware_build:
+         self.cloneFirmwareBuild()
                
    def setup(self):
       
@@ -660,6 +688,7 @@ class TestNode(object):
       # setup.
       #
       self.useParentEntity("description")
+      self.useParentEntity("driver_cmd_line_flags")
       self.useParentEntity("boards_url")
       self.useParentEntity("boards_commit")
       self.useParentEntity("firmware_build")
@@ -819,9 +848,9 @@ def export_as_cmake(cmake_filename,
    for digest, firmware_build in unique_firmware_builds_by_digest.items():
       cmake_file.write("kaleidoscope_firmware_build(\n")
       cmake_file.write("   BUILD_ID \"" + str(firmware_build.set_id) + "\"\n")
-      if hasattr(firmware_build, 'boards_url')
+      if firmware_build.boards_url:
             cmake_file.write("   BOARDS_URL \"" + str(firmware_build.boards_url) + "\"\n")
-      if hasattr(firmware_build, 'boards_commit')
+      if firmware_build.boards_commit:
             cmake_file.write("   BOARDS_COMMIT \"" + str(firmware_build.boards_commit) + "\"\n")
       cmake_file.write("   DIGEST \"" + str(digest) + "\"\n")
       cmake_file.write("   FIRMWARE_SKETCH \"" + firmware_build.firmware_sketch.filename + "\"\n")
@@ -853,6 +882,8 @@ def export_as_cmake(cmake_filename,
       cmake_file.write("   TEST_ID \"" + str(test_id) + "\"\n")
       cmake_file.write("   TEST_NAME \"" + test_node.generateGlobalName() + "\"\n")
       cmake_file.write("   TEST_DESCRIPTION \"" + test_node.description.value + "\"\n")
+      if(test_node.driver_cmd_line_flags):
+         cmake_file.write("   DRIVER_CMD_LINE_FLAGS \"" + test_node.driver_cmd_line_flags.value + "\"\n")
       cmake_file.write("   PYTHON_DRIVER \"" +
                 test_node.python_driver.filename + "\"\n")  
       cmake_file.write("   FIRMWARE_BUILD_ID \"" +
@@ -865,6 +896,8 @@ def export_as_cmake(cmake_filename,
       cmake_file.write("   #\n") 
       cmake_file.write("   NAME_ORIGIN \"" + test_node.name.path + "\"\n")      
       cmake_file.write("   DESCRIPTION_ORIGIN \"" + test_node.description.path + "\"\n")
+      if test_node.driver_cmd_line_flags:
+         cmake_file.write("   DRIVER_CMD_LINE_FLAGS_ORIGIN \"" + test_node.driver_cmd_line_flags.path + "\"\n")
       cmake_file.write("   FIRMWARE_BUILD_ORIGIN \"" + test_node.firmware_build.path + "\"\n")
       
       cmake_file.write(")\n")

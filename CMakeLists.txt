@@ -20,72 +20,149 @@ cmake_minimum_required(VERSION 2.8)
 
 # Use a custom execute_process wrapper that does proper error reporting 
 #
-include("${CMAKE_SOURCE_DIR}/cmake/execute_process.cmake")
+include("${CMAKE_SOURCE_DIR}/cmake/execute_process.macros.cmake")
+include("${CMAKE_SOURCE_DIR}/cmake/log.macros.cmake")
+
+set(overall_log_file "${CMAKE_BINARY_DIR}/leidokos_testing.log.txt")
+
+if(EXISTS "${overall_log_file}")
+   file(REMOVE "${overall_log_file}")
+endif()
 
 # We need git to clone remote repositories
 #
 find_package(Git REQUIRED)
 
 if(NOT GIT_FOUND)
-   message(FATAL_ERROR "Unable to find git executable. Please configure the CMake build system manually if git is installed in a non standard location")
+   log(FATAL_ERROR "Unable to find git executable. Please configure the CMake build system manually if git is installed in a non standard location")
+endif()
+
+# Consider testing with travis
+#
+set(default_target_url "")
+set(detault_target_commit "master")
+
+if(NOT "$ENV{TRAVIS_REPO_SLUG}" STREQUAL "")
+   set(default_target_url "https://github.com/$ENV{TRAVIS_REPO_SLUG}.git")
+   set(detault_target_commit "$ENV{TRAVIS_COMMIT}")
 endif()
 
 # The URL of the Kaleidoscope module to test
 #
-set(LEIDOKOS_TESTING_TARGET_URL "" CACHE STRING 
+set(LEIDOKOS_TESTING_TARGET_URL "${default_target_url}" CACHE STRING 
    "The URL of a git repository that represents the Kaleidoscope module to test")
    
-if(NOT "${LEIDOKOS_TESTING_TARGET_BRANCH}" STREQUAL "")
-   set(branch_spec -b "${LEIDOKOS_TESTING_TARGET_BRANCH}")
+# If a non-default commit/branch/tag of the target repository is supposed
+# to be checked out, this can be set through variable
+# LEIDOKOS_TESTING_TARGET_COMMIT.
+#
+set(LEIDOKOS_TESTING_TARGET_COMMIT "${detault_target_commit}" CACHE STRING
+   "The git commit/branch/sha of the target module to be checked out for testing")
+   
+if("${LEIDOKOS_TESTING_TARGET_URL}" STREQUAL "")
+   log(FATAL_ERROR "Empty LEIDOKOS_TESTING_TARGET_URL provided")
 endif()
+      
+# The target URL can be an existing path of the local
+# file system
+#
+if(EXISTS "${LEIDOKOS_TESTING_TARGET_URL}")
+   log("Testing local module in ${LEIDOKOS_TESTING_TARGET_URL}")
+   set(target_module_dir "${LEIDOKOS_TESTING_TARGET_URL}")
+   get_filename_component(target_repo_dir_basename 
+      "${LEIDOKOS_TESTING_TARGET_URL}" NAME)
+else()
 
-if(NOT "${LEIDOKOS_TESTING_TARGET_URL}" STREQUAL "")
-
+   # Or it can be a remote git repository
+   
+   # Then we have to determine the actual name of the repository (without
+   # extension. .../CapeLeidokos/AModule.git would become AModule
+   #
    get_filename_component(target_repo_dir_basename 
       "${LEIDOKOS_TESTING_TARGET_URL}" NAME_WE)
-
+      
+   # The path where the local copy of the module that is to be tested
+   # is going to be checked out.
+   #
    set(testing_target_dir "${CMAKE_BINARY_DIR}/target_module")
+   file(MAKE_DIRECTORY "${testing_target_dir}")
 
-   # Clone the target module that is supposed to be tested
+   # The path to the local copy of the git repository of the module that 
+   # is supposed to be tested.
+   #
+   set(target_module_dir "${testing_target_dir}/${target_repo_dir_basename}")
+   
+   # Clone the target module
    #
    if(NOT EXISTS "${testing_target_dir}/${target_repo_dir_basename}/.git")
    
-      file(MAKE_DIRECTORY "${testing_target_dir}")
-   
-      message("Cloning git repository ${LEIDOKOS_TESTING_TARGET_URL}")
+      log("Cloning git repository ${LEIDOKOS_TESTING_TARGET_URL}")
+      
       _execute_process(
          "clone Kaleidoscope module \"${LEIDOKOS_TESTING_TARGET_URL}\" \
 that is supposed to be tested"
          COMMAND "${GIT_EXECUTABLE}" clone 
-            ${branch_spec}
-            --recursive "${LEIDOKOS_TESTING_TARGET_URL}"
-         WORKING_DIRECTORY "${testing_target_dir}"
-      )
-   else()
-      message("Git repository already cloned to \
-${testing_target_dir}/${target_repo_dir_basename}")
-      _execute_process(
-         "update Kaleidoscope module \"${LEIDOKOS_TESTING_TARGET_URL}\" \
-that is supposed to be tested"
-         COMMAND "${GIT_EXECUTABLE}" checkout --recurse-submodules
-            "origin/${branch_spec}"
+            "${LEIDOKOS_TESTING_TARGET_URL}"
          WORKING_DIRECTORY "${testing_target_dir}"
       )
    endif()
    
-   set(default_module_dir "${testing_target_dir}/${target_repo_dir_basename}")
+   log("Local target module directory ${target_module_dir}")
+   
+   _execute_process(
+      "checking out commit of Kaleidoscope module \
+\"${LEIDOKOS_TESTING_TARGET_URL}\" \
+that is supposed to be tested"
+      COMMAND "${GIT_EXECUTABLE}" checkout origin/${LEIDOKOS_TESTING_TARGET_COMMIT} 
+      WORKING_DIRECTORY "${target_module_dir}"
+   )
+
+   # We did not checkout a specific branch during cloning. Therefore
+   # we have to update at least the first level of submodules
+   # after possibly switching to a different branch (different from master).
+   #
+   _execute_process(
+      "recursively update Kaleidoscope module \"${LEIDOKOS_TESTING_TARGET_URL}\""
+      COMMAND "${GIT_EXECUTABLE}" submodule update --init 
+      WORKING_DIRECTORY "${target_module_dir}"
+   )
+   
+   # The .gitmodule files of the submodules might have changed. 
+   # Thus, we have to syncronize them before doing further updates.
+   #
+   _execute_process(
+      "syncing submodules of Kaleidoscope module \"${LEIDOKOS_TESTING_TARGET_URL}\""
+      COMMAND "${GIT_EXECUTABLE}" submodule sync --recursive 
+      WORKING_DIRECTORY "${target_module_dir}"
+   )
+      
+   # Update all submodules recursively.
+   #
+   _execute_process(
+      "recursively update Kaleidoscope module \"${LEIDOKOS_TESTING_TARGET_URL}\""
+      COMMAND "${GIT_EXECUTABLE}" submodule update --init --recursive 
+      WORKING_DIRECTORY "${target_module_dir}"
+   )
+endif()
+
+if("${target_repo_dir_basename}" STREQUAL "Leidokos-Python")
+   set(target_module_is_leidokos_python TRUE)
+else()
+   set(target_module_is_leidokos_python FALSE)
 endif()
    
-# Alternatively to specifying an URL for the target module, we 
-# allow defining a directory that represents the root of a testing
-# files system.
+# Normally, the test specifications reside in directories below the
+# testing directory of the target module.
+# To provide more flexibility, the root of the testing 
+# directory structure can be explicitly defined 
+# via variable LEIDOKOS_TESTING_TREE_ROOT.
 #
 set(LEIDOKOS_TESTING_TREE_ROOT 
-   "${default_module_dir}/testing" CACHE PATH 
+   "${target_module_dir}/testing" CACHE PATH 
    "The testing directory root of the module to be tested") 
    
 if(NOT EXISTS "${LEIDOKOS_TESTING_TREE_ROOT}")
-   message(FATAL_ERROR "Unable to find testing tree root \
+   log(FATAL_ERROR "Unable to find testing tree root \
 LEIDOKOS_TESTING_TREE_ROOT=\"${LEIDOKOS_TESTING_TREE_ROOT}\"")
 endif()
 
@@ -96,31 +173,29 @@ set(Python_ADDITIONAL_VERSIONS "3")
 find_package(PythonInterp REQUIRED)
 
 if(NOT PYTHONINTERP_FOUND)
-   message(SEND_ERROR 
-"Leidokos-Testing requires a Python interpreter to prepare the testing \
+   log(SEND_ERROR 
+"Leidokos-Testing requires a Python3 interpreter to prepare the testing \
 infrastructure. If you have installed python in a non standard location, \
 please configure the CMake build system accordingly. See the documentation \
 about the FindPythonInterp module at \
 https://cmake.org/cmake/help/v3.0/module/FindPythonInterp.html \
 for additional build system variables that support the python auto \
 detection process.")
-   message(SEND_ERROR "Under Ubuntu linux python can be installed as")
-   message(SEND_ERROR "sudo apt-get install libboost-python-dev")
-   message(FATAL_ERROR "Aborting.")
+   log(SEND_ERROR "Under Ubuntu linux python can be installed as")
+   log(SEND_ERROR "sudo apt-get install libboost-python-dev")
+   log(FATAL_ERROR "Aborting.")
    
 endif()
 
-# The python script that does the transformation of the testing file
-# system.
+# prepare_testing.py is a python script that scans the testing file
+# system and generates a CMake-compatible description of 
+# firmware builds and tests to run (cmake_test_definitions_file below).
 #
 set(prepare_testing_file "${CMAKE_SOURCE_DIR}/python/prepare_testing.py")
 
-# A CMake file that is generated by the python process. It contains
-# all information needed to generate tests.
-#
 set(cmake_test_definitions_file "${CMAKE_BINARY_DIR}/test_definitions.cmake")
 
-# Prepare the test definition file.
+# Run Python to prepare the test definition file.
 #
 _execute_process(
    "prepare test file"
@@ -129,22 +204,74 @@ _execute_process(
       -c "${cmake_test_definitions_file}"
 )
 
-# This is the directory in the binary tree that will 
-# host all the firmwares build for our tests.
+# The possibly multiple different firmware builds that are needed by 
+# the (possibly multiple) tests reside in directories given integer
+# numbered names below firmware_builds_base_dir.
 #
 set(firmware_builds_base_dir "${CMAKE_BINARY_DIR}/firmware")
 
 # Some stuff that needs to be done during build time needs to be
 # carried out through CMake scripts that are generated during the 
-# configuration stage. This is necessary for being able to use portable CMake
-# scripting during the build stage.
+# configuration stage. All generated CMake scripts reside in 
+# directory cmake_scripts_dir.
 #
 set(cmake_scripts_dir "${CMAKE_BINARY_DIR}/cmake_scripts")
+
+# For every test, an individual log file is generated. Test log files 
+# reside in directory test_logs_dir.
+#
+set(test_logs_dir "${CMAKE_BINARY_DIR}/test_logs")
+file(MAKE_DIRECTORY "${test_logs_dir}")
+
+# In the special case that Leidokos-Testing is used to test
+# Leidokos-Python, we make sure that the same branch is used
+# for the target repository (cloned at the beginning of this file)
+# and the Leidokos-Python module used for the firmware.
+#
+set(leidokos_python_repo_slug "CapeLeidokos/Leidokos-Python")
+
+set(LEIDOKOS_TESTING_LEIDOKOS_PYTHON_URL "https://github.com/${leidokos_python_repo_slug}.git" CACHE STRING
+   "Use this variable to define an URL/local path to a Leidokos-Python \
+repository that is supposed to be used as firmware module for testing. \
+If unspecified, a default repo/commit will be used.")
+set(LEIDOKOS_TESTING_LEIDOKOS_PYTHON_COMMIT "master" CACHE STRING
+   "Specify a commit that is used together with the repository specified through variable \
+LEIDOKOS_TESTING_LEIDOKOS_PYTHON_URL")
+
+set(LEIDOKOS_TESTING_REUSE_TARGET_LEIDOKOS_PYTHON FALSE CACHE BOOL
+   "If this variable is enabled, the target repository is used as \
+Leidokos-Python. Make sure that you only enable this variable it you are \
+testing Leidokos-Python (target).")
+
+# The default Leidokos-Python to use as firmware module (possibly
+# replaced below)
+#
+set(leidokos_python_url "${LEIDOKOS_TESTING_LEIDOKOS_PYTHON_URL}")
+set(leidokos_python_commit "${LEIDOKOS_TESTING_LEIDOKOS_PYTHON_COMMIT}")
+
+if("$ENV{TRAVIS_REPO_SLUG}" STREQUAL "${leidokos_python_repo_slug}")
+
+   # When testing with travis, environment variables are used 
+   # to define the target module/repo and the commit to test.
+
+   log("Testing with travis. Using Leidokos-Python branch $ENV{TRAVIS_COMMIT}")
+   
+   # We keep the default leidokos_python_url
+   
+   set(leidokos_python_commit "$ENV{TRAVIS_COMMIT}")
+   
+elseif(LEIDOKOS_TESTING_REUSE_TARGET_LEIDOKOS_PYTHON)
+
+   # Use the target repository as Leidokos-Python.
+   #
+   set(leidokos_python_url "${LEIDOKOS_TESTING_TARGET_URL}")
+   set(leidokos_python_commit "${LEIDOKOS_TESTING_TARGET_COMMIT}")
+endif()
 
 # An auxiliary function that helps us to determine the firmware build 
 # directory for a given build ID.
 #
-function(_get_firmware_build_dir
+function(_determine_firmware_build_dir
    build_id_
    result_var_
 )
@@ -152,13 +279,21 @@ function(_get_firmware_build_dir
    set("${result_var_}" "${firmware_dir}/build" PARENT_SCOPE)
 endfunction()
 
+# An auxiliary method to report configuration errors for specific
+# firmware builds.
+#
 function(_configuration_error_build
    build_id_
 )
-   message(FATAL_ERROR "Firmware build ${build_id_}: ${ARGN}")
+   log(FATAL_ERROR "kaleidoscope_firmware_build (BUILD_ID=${build_id_}): ${ARGN}")
 endfunction()
 
-macro(_add_repo
+# An auxiliary macro that defines a git repository, a commit and a module
+# name and adds them to a list of modules.
+#
+# TODO: Check URLs for uniqueness.
+#
+macro(_add_firmware_module
    url_
    commit_
    name_
@@ -178,120 +313,145 @@ macro(_add_repo
    endif()
 endmacro()
 
-# This function is called from the generated file ${cmake_test_definitions_file}.
+# This function is called from the generated file cmake_test_definitions_file
+# that is included further on.
 #
-# It generates a CMake target that builds a Kaleidoscope firmware based
+# It generates a CMake target to build a Kaleidoscope firmware based
 # on a given firmware sketch and a specific module configuration.
 #
 function(kaleidoscope_firmware_build)
 
+   # Parse variadic arguments
+   #
    set(options "")
-   set(one_value_args "BUILD_ID" "DIGEST" "FIRMWARE_SKETCH" "BOARDS_URL" "BOARDS_COMMIT")
-   set(multi_value_args URL COMMIT NAME)
+   set(one_value_args 
+      "BUILD_ID" "DIGEST" "FIRMWARE_SKETCH" "BOARDS_URL" "BOARDS_COMMIT")
+   set(multi_value_args "URL" "COMMIT" "NAME")
    
-   cmake_parse_arguments(args "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN} )
+   cmake_parse_arguments(args 
+      "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN} )
+      
+   # Check consistency of call arguments.
+   #
+   if("${args_BUILD_ID}" STREQUAL "")
+      _configuration_error_build(${args_BUILD_ID} "BUILD_ID undefined")
+   endif()
    
-#    _get_firmware_build_dir("cache" cache_firmware_build_dir)
-   _get_firmware_build_dir("${args_BUILD_ID}" firmware_build_dir)
+   if("${args_FIRMWARE_SKETCH}" STREQUAL "")
+      _configuration_error_build(${args_BUILD_ID} "FIRMWARE_SKETCH undefined")
+   endif()
    
-   message("Preparing firmware build in ${firmware_build_dir}")
+   # Generate an absolute firmware build directory based on the build ID.
+   #
+   _determine_firmware_build_dir("${args_BUILD_ID}" firmware_build_dir)
+   file(MAKE_DIRECTORY "${firmware_build_dir}")
+   
+   log("Preparing firmware build in ${firmware_build_dir}")
+   
+   set(log_file "${firmware_build_dir}/leidokos-testing.configure.log.txt")
+   set(build_log_file "${firmware_build_dir}/leidokos-testing.build.log.txt")
+   
+   if(EXISTS "${log_file}")
+      file(REMOVE "${log_file}")
+   endif()
    
    # Prepare the firmware directory
    #
    file(MAKE_DIRECTORY "${firmware_build_dir}/hardware/keyboardio")
       
-   if(NOT "${args_BOARDS_URL}" STREQUAL "")
-      set(arduino_boards_url "${args_BOARDS_URL}")
-   else()
-      
-      set(arduino_boards_url "https://github.com/CapeLeidokos/Arduino-Boards.git")
+   # Set the default boards URL and commit if none is specified.
+   #
+   if("${args_BOARDS_URL}" STREQUAL "")
+      set(args_BOARDS_URL "https://github.com/CapeLeidokos/Arduino-Boards.git")
    endif()
    
-   if(NOT "${args_BOARDS_COMMIT}" STREQUAL "")
-      set(arduino_boards_commit "${args_BOARDS_COMMIT}")
-   else()
-      
-      set(arduino_boards_commit "master")
+   if("${args_BOARDS_COMMIT}" STREQUAL "")
+      set(args_BOARDS_COMMIT "origin/regression_testing")
    endif()
    
-#    if(NOT EXISTS "${cache_firmware_build_dir}/hardware/keyboardio/avr")
-#    
-#       file(MAKE_DIRECTORY "${cache_firmware_build_dir}/hardware/keyboardio")
-#       
-#       _execute_process(
-#          "clone ${arduino_boards_url} to be cached"
-#          COMMAND "${GIT_EXECUTABLE}" clone
-#             -b regression_testing
-#             --recursive "${arduino_boards_url}"
-#             hardware/keyboardio/avr
-#          WORKING_DIRECTORY "${cache_firmware_build_dir}"
-#       )
-#    endif()
+   log("   boards url: ${args_BOARDS_URL}")
+   log("   boards commit: ${args_BOARDS_COMMIT}")
+   log("   sketch: ${args_FIRMWARE_SKETCH}")
    
    # Only clone and checkout the boards directory once. 
-   # During consecutive configuration runs, the modules 
+   # During consecutive configuration runs, modules 
    # will be updated individually.
    #
    if(NOT EXISTS "${firmware_build_dir}/hardware/keyboardio/avr")
       
       _execute_process(
-         "clone ${arduino_boards_url}"
-         COMMAND "${GIT_EXECUTABLE}" clone
-#             -b "${arduino_boards_commit}"
-            --recursive "${arduino_boards_url}"
+         "clone ${args_BOARDS_URL}"
+         COMMAND "${GIT_EXECUTABLE}" clone "${args_BOARDS_URL}"
             hardware/keyboardio/avr
          WORKING_DIRECTORY "${firmware_build_dir}"
       )
       
       _execute_process(
-         "check out ${arduino_boards_commit}"
+         "check out ${args_BOARDS_COMMIT}"
          COMMAND "${GIT_EXECUTABLE}" checkout
-            "${arduino_boards_commit}"
+            "${args_BOARDS_COMMIT}"
+         WORKING_DIRECTORY "${firmware_build_dir}/hardware/keyboardio/avr"
+      )
+      
+      _execute_process(
+         "update boards submodules"
+         COMMAND "${GIT_EXECUTABLE}" submodule update --init
+         WORKING_DIRECTORY "${firmware_build_dir}/hardware/keyboardio/avr"
+      )
+      
+      _execute_process(
+         "syncing boards submodules"
+         COMMAND "${GIT_EXECUTABLE}" submodule sync --recursive
+         WORKING_DIRECTORY "${firmware_build_dir}/hardware/keyboardio/avr"
+      )
+      
+      _execute_process(
+         "update boards submodules"
+         COMMAND "${GIT_EXECUTABLE}" submodule update --init --recursive
          WORKING_DIRECTORY "${firmware_build_dir}/hardware/keyboardio/avr"
       )
    endif()
    
-   # Copy the cached firmware to save download bandwith
-   #
-#    _execute_process(
-#       "copying cached Arduino-Boards repository"
-#       COMMAND "${CMAKE_COMMAND}" -E copy_directory
-#          "${cache_firmware_build_dir}" "${firmware_build_dir}"
-#    )
-
-   set(leidokos_python_repo_slug "CapeLeidokos/Leidokos-Python")
-
-   # When Leidokos-Testing is used to test Leidokos-Python, 
-   # we make sure that the same branch is used as the one that is
-   # just tested.
-   #
-   if("$ENV{TRAVIS_REPO_SLUG}" STREQUAL "${leidokos_python_repo_slug}")
-      message("Testing with travis. Using Leidokos-Python branch $ENV{TRAVIS_BRANCH}")
-      set(leidokos_python_branch "$ENV{TRAVIS_BRANCH}")
-   else()
-      set(leidokos_python_branch "")
+   set(LEIDOKOS_TESTING_TARGET_REPO_IS_FIRMWARE_MODULE FALSE CACHE BOOL
+      "It this flag is enabled, the target repository is automatically added "
+      "to the firmware modules")
+      
+   if(LEIDOKOS_TESTING_TARGET_REPO_IS_FIRMWARE_MODULE)
+      log("   Adding target ${LEIDOKOS_TESTING_TARGET_URL} to firmware modules")
+      _add_firmware_module(
+         "${LEIDOKOS_TESTING_TARGET_URL}"
+         "${LEIDOKOS_TESTING_TARGET_COMMIT}"
+         "${target_repo_dir_basename}"
+      )
    endif()
    
    # Leidokos-Python is needed by all builds to ensure that 
    # we can build firmware libraries for the host target that
    # can be used by our python drivers
    #
-   _add_repo(
-      "https://github.com/${leidokos_python_repo_slug}.git"
-      "${leidokos_python_branch}"
-      ""
+   if(   
+         # Make sure that we do not redundantly add Leidokos-Python as firmware
+         # module.
+         
+         (NOT "${leidokos_python_url}" STREQUAL 
+                  "${LEIDOKOS_TESTING_TARGET_URL}")
+      OR (NOT LEIDOKOS_TESTING_TARGET_REPO_IS_FIRMWARE_MODULE)
    )
-   
-   if(LEIDOKOS_TESTING_AUTO_ADD_TESTED_REPO)
-      message("   LEIDOKOS_TESTING_AUTO_ADD_TESTED_REPO=${LEIDOKOS_TESTING_AUTO_ADD_TESTED_REPO}")
-      message("   Adding ${LEIDOKOS_TESTING_TARGET_URL} to firmware modules")
-      _add_repo(
-         "${LEIDOKOS_TESTING_TARGET_URL}"
-         "${LEIDOKOS_TESTING_TARGET_BRANCH}"
+      log("   Adding default ${leidokos_python_url} to firmware modules")
+      _add_firmware_module(
+         "${leidokos_python_url}"
+         "${leidokos_python_commit}"
          ""
       )
    endif()
    
+   # Tests can specify firmware modules that are
+   # supposed to be build and linked additionally to the default board
+   # modules. For each module a tuple of URL, commit (commit/tag/branch)
+   # and a module name can be specified. If one is specified, all there
+   # are needed. That's why we have to ensure that the numbers of provided
+   # URLs, commits and names match.
+   #
    list(LENGTH args_URL n_urls)
    list(LENGTH args_COMMIT n_commits)
    list(LENGTH args_NAME n_names)
@@ -312,51 +472,68 @@ There are ${n_urls} URLs (${args_URL}) and ${n_commits} (${args_COMMIT}) commits
    
    if(n_urls GREATER 0)
    
+      # Add explicitly specified firmware modules.
+
+      log("   modules:")
+   
       math(EXPR max_id "${n_urls} - 1")
    
-      # Configure modules. Every module corresponds to a directory in 
+      # Every module corresponds to a directory in 
       # hardware/keyboardio/avr/libraries. 
       #
       foreach(id RANGE ${max_id})
+      
          list(GET args_URL ${id} url)
          list(GET args_COMMIT ${id} commit)
-         list(GET args_NAME ${id} name)
+         list(GET args_NAME ${id} module_name)
          
          if("${commit}" STREQUAL "__NONE__")
             set(commit "origin/master")
          endif()
-         if("${name}" STREQUAL "__NONE__")
-            set(name "")
+         if("${module_name}" STREQUAL "__NONE__")
+            set(module_name "")
          endif()
          
-         # If a name is defined for a module, the respective module from
-         # the stock firmware is removed.
-         if(NOT "${name}" STREQUAL "")
-         
-            set(kaleidoscope_module_path "${firmware_libraries_dir}/${name}")
+         # If a module_name is defined for a module, the respective module that
+         # comes with the stock firmware (boards repo) is removed.
+         #
+         if(NOT "${module_name}" STREQUAL "")
             
-            if(NOT EXISTS "${kaleidoscope_module_path}")
-               _configuration_error_build(${args_BUILD_ID} 
-                  "Kaleidoscope module \
-\"${kaleidoscope_module_path}\" is scheduled for removal. The respective \
-directory is, however, non-existent")
-            endif()
+            set(kaleidoscope_module_path "${firmware_libraries_dir}/${module_name}")
+            
+            if(EXISTS "${kaleidoscope_module_path}")
+            
+               _execute_process(
+                  "determine URL of Kaleidoscope module \"${url}\""
+                  COMMAND "${GIT_EXECUTABLE}" remote get-url origin
+                  OUTPUT_VARIABLE current_remote_url
+                  OUTPUT_STRIP_TRAILING_WHITESPACE
+                  WORKING_DIRECTORY "${kaleidoscope_module_path}"
+               )
                
-            # Remove the Kaleidoscope module
-            #
-            file(REMOVE_RECURSE "${kaleidoscope_module_path}")
+               if(NOT "${current_remote_url}" STREQUAL "${url}")
+               
+                  log("      Removing pre-existing module ${module_name}")
+
+                  file(REMOVE_RECURSE "${kaleidoscope_module_path}")
+               endif()
+            endif()
          endif()
          
          set(just_cloned FALSE)
          
-         # If an url is provided, it is cloned to hardware/keyboardio/avr/libraries.
+         # If a URL is provided for the module, 
+         # it is cloned to hardware/keyboardio/avr/libraries.
          #
          if(NOT "${url}" STREQUAL "")
             
-            get_filename_component(name "${url}" NAME_WE) 
+            get_filename_component(module_name "${url}" NAME_WE) 
          
-            if(NOT EXISTS "${firmware_libraries_dir}/${name}")
-               message("   Cloning module ${url}")
+            # We clone only once (if the module directory does not yet exist).
+            #
+            if(NOT EXISTS "${firmware_libraries_dir}/${module_name}")
+            
+               log("      Cloning module ${url}")
                _execute_process(
                   "clone Kaleidoscope module \"${url}\""
                   COMMAND "${GIT_EXECUTABLE}" clone --recursive
@@ -368,40 +545,68 @@ directory is, however, non-existent")
             endif()
          endif()
          
-         # At this point name must be non-empty
+         # At this point module_name must be non-empty
          #
-         if("${name}" STREQUAL "")
-            _configuration_error_build(${args_BUILD_ID} "Empty name")
+         if("${module_name}" STREQUAL "")
+            _configuration_error_build(${args_BUILD_ID} "Empty module name")
          endif()
          
          if(NOT just_cloned)
          
             _execute_process(
-               "fetch remote of module ${name}"
+               "fetch remote of module ${module_name}"
                COMMAND "${GIT_EXECUTABLE}" fetch 
-               WORKING_DIRECTORY "${firmware_libraries_dir}/${name}"
+               WORKING_DIRECTORY "${firmware_libraries_dir}/${module_name}"
             )
          endif()
                
-         # If a commit is defined, it is checked out for the respective module.
+         # If a commit is defined, it is checked out and all git submodules
+         # are updated.
          #
-         message("   Checking out ${commit} of module ${name}")
+         log("      Checking out ${commit} of module ${module_name}")
          _execute_process(
-            "check out commit ${commit} in module ${name}"
-            COMMAND "${GIT_EXECUTABLE}" checkout --recurse-submodules ${commit}
-            WORKING_DIRECTORY "${firmware_libraries_dir}/${name}"
+            "check out commit ${commit} in module ${module_name}"
+            COMMAND "${GIT_EXECUTABLE}" checkout ${commit}
+            WORKING_DIRECTORY "${firmware_libraries_dir}/${module_name}"
          )
+         _execute_process(
+            "update module ${module_name} recursively"
+            COMMAND "${GIT_EXECUTABLE}" submodule update --init
+            WORKING_DIRECTORY "${firmware_libraries_dir}/${module_name}"
+         )
+         _execute_process(
+            "syncing submodules of module ${module_name}"
+            COMMAND "${GIT_EXECUTABLE}" submodule sync --recursive
+            WORKING_DIRECTORY "${firmware_libraries_dir}/${module_name}"
+         )
+         _execute_process(
+            "update module ${module_name} recursively"
+            COMMAND "${GIT_EXECUTABLE}" submodule update --init --recursive
+            WORKING_DIRECTORY "${firmware_libraries_dir}/${module_name}"
+         )
+            
       endforeach()
    endif()
    
-   # Configure all those modules that provide a setup.script.cmake
+   # Kaleidoscope modules can define a setup script (setup_library.script.cmake)
+   # that must be run 
+   # once, before the firmware can be build (non-arduino conformant).
+   # 
+   set(setup_library_script_basename "setup_library.script.cmake")
+   
+   # Search modules for setup scripts and execute those that are found.
    #
-   file(GLOB library_dirs "${firmware_build_dir}/hardware/keyboardio/avr/libraries/*")
+   file(GLOB library_dirs 
+      "${firmware_build_dir}/hardware/keyboardio/avr/libraries/*")
    
    foreach(lib_dir ${library_dirs})
-      set(setup_script "${lib_dir}/setup_library.script.cmake")
+   
+      set(setup_script "${lib_dir}/${setup_library_script_basename}")
+      
       if(EXISTS "${setup_script}")
-         message("   Setting up module ${lib_dir}")
+      
+         log("   Setting up firmware module ${lib_dir}")
+         
          _execute_process(
             "setup library in ${lib_dir}"
             COMMAND "${CMAKE_COMMAND}"
@@ -413,16 +618,19 @@ directory is, however, non-existent")
       endif()
    endforeach()
    
-   file(MAKE_DIRECTORY "${firmware_build_dir}")
-   
-   # Generate a build script that is executed during the build 
-   # phase. Thus, we can use CMake scripting during the build phase.
+   # To be portable, we use CMake scripts during the build phase.
    #
    set(firmware_build_script 
       "${cmake_scripts_dir}/build_firmware_${args_BUILD_ID}.script.cmake")
       
-   # Allow to pass certain variables that are specified at the command line of
-   # Leidokos-Testing, on to Leidokos-Python.
+   # We pass certain variables that are specified at the command line of
+   # Leidokos-Testing, on to Leidokos-Python that is configured during 
+   # the build process.
+   #
+   set(leidokos_python_cmd_line_vars "")
+   
+   # An auxiliary function to add CMake variables of this Leidokos-Testing 
+   # configuration process as Leidokos-Python CMake command line arguments.
    #
    function(_init_cmake_variable
       var_
@@ -431,10 +639,10 @@ directory is, however, non-existent")
          return()
       endif()
       
-      set("add_cmd_line" "${add_cmd_line} -D${var_}=${${var_}}" PARENT_SCOPE)
+      set("leidokos_python_cmd_line_vars" 
+         "${leidokos_python_cmd_line_vars} -D${var_}=${${var_}}" PARENT_SCOPE)
    endfunction()
    
-   set(add_cmd_line "")
    _init_cmake_variable(Boost_DIR)
    _init_cmake_variable(Boost_INCLUDE_DIR)
    _init_cmake_variable(Boost_LIBRARY_DIR_DEBUG)
@@ -445,14 +653,19 @@ directory is, however, non-existent")
    _init_cmake_variable(PYTHON_LIBRARY)
    _init_cmake_variable(PYTHON_LIBRARY_DEBUG)
    
+   # Generate the firmware build script.
+   #
    file(WRITE "${firmware_build_script}" "\
-include(\"${CMAKE_SOURCE_DIR}/cmake/execute_process.cmake\")
+include(\"${CMAKE_SOURCE_DIR}/cmake/execute_process.macros.cmake\")
+include(\"${CMAKE_SOURCE_DIR}/cmake/log.macros.cmake\")
+
+file(REMOVE \"\${log_file}\")
 
 _execute_process(
    \"configure firmware build ${args_BUILD_ID}\"
    COMMAND \"${CMAKE_COMMAND}\" 
       \"-DKALEIDOSCOPE_FIRMWARE_SKETCH=${args_FIRMWARE_SKETCH}\"
-      ${add_cmd_line}
+      ${leidokos_python_cmd_line_vars}
       \"${firmware_libraries_dir}/Leidokos-Python\"
    WORKING_DIRECTORY \"${firmware_build_dir}\"
 )
@@ -464,23 +677,32 @@ _execute_process(
 )
 ")
 
-   set(firmware_executable "${firmware_build_dir}/kaleidoscope.firmware")
+   set(firmware_binary "${firmware_build_dir}/kaleidoscope.firmware")
    
    add_custom_command(
-      OUTPUT "${firmware_executable}"
-      COMMAND "${CMAKE_COMMAND}" -P "${firmware_build_script}"
+      OUTPUT "${firmware_binary}"
+      COMMAND "${CMAKE_COMMAND}" 
+         "-Dlog_file=${build_log_file}" -P "${firmware_build_script}"
       COMMENT "Building Kaleidoscope firmware from \
 sketch \"${args_FIRMWARE_SKETCH}\""
    )
    
-   # Prepare a target to build the firmware
+   # Define a CMake-target to build the firmware
    #
    add_custom_target(
       firmware_${args_BUILD_ID}
       ALL
-      DEPENDS "${firmware_executable}"
+      DEPENDS "${firmware_binary}"
    )
 endfunction() # end of kaleidoscope_firmware_build
+
+# An error reporting function for test specifications
+#
+function(_kaleidoscope_test_error
+   name_
+)
+   log(FATAL_ERROR "kaleidoscope_test (NAME=${name_}): ${ARGN}")
+endfunction()
 
 # This function is called from the generated file ${cmake_test_definitions_file}.
 #
@@ -488,52 +710,85 @@ endfunction() # end of kaleidoscope_firmware_build
 # and operates on a specific firmware build.
 #
 function(kaleidoscope_test)
-
+   
+   # Errors during test configuration are logged to the global log file.
+   #
+   set(log_file "${overall_log_file}")
+   
+   # Parse variadic arguments
+   #
    set(options "")
-   set(one_value_args "TEST_NAME" "PYTHON_DRIVER" "FIRMWARE_BUILD_ID"
-      # unused
-      "TEST_ID" "TEST_DESCRIPTION" "NAME_ORIGIN" "DESCRIPTION_ORIGIN" "FIRMWARE_BUILD_ORIGIN")
+   set(one_value_args "TEST_NAME" "PYTHON_DRIVER" 
+      "DRIVER_CMD_LINE_FLAGS" "FIRMWARE_BUILD_ID"
+      
+      # The following arguments are unused (and silently ignored)
+      "TEST_ID" "TEST_DESCRIPTION" "NAME_ORIGIN" "DESCRIPTION_ORIGIN"
+      "DRIVER_CMD_LINE_FLAGS_ORIGIN"
+      "FIRMWARE_BUILD_ORIGIN")
    set(multi_value_args "")
    
    cmake_parse_arguments(args "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN} )
+   
+   macro(_assert_test_args_defined 
+      arg_names_
+   )
+      foreach(arg_name ${arg_names_})
+         if("${args_${arg_name}}" STREQUAL "")
+            _kaleidoscope_test_error("${args_TEST_NAME}" "${arg_name} undefined")
+         endif()
+      endforeach()
+   endmacro()
+   
+   # Check argument consistency
+   #
+   _assert_test_args_defined("TEST_NAME;PYTHON_DRIVER;FIRMWARE_BUILD_ID")
 
-#    if("${args_TEST_ID}" STREQUAL "")
-#       message(FATAL_ERROR "Empty test ID encountered")
-#    endif()
+   _determine_firmware_build_dir("${args_FIRMWARE_BUILD_ID}" firmware_build_dir)
    
-   if("${args_TEST_NAME}" STREQUAL "")
-      message(FATAL_ERROR "Empty test name encountered")
-   endif()
+   log("Adding test ${args_TEST_NAME}")
    
-   if("${args_PYTHON_DRIVER}" STREQUAL "")
-      message(FATAL_ERROR "Empty python driver encountered")
-   endif()
-   
-   if("${args_FIRMWARE_BUILD_ID}" STREQUAL "")
-      message(FATAL_ERROR "Empty firmware build id encountered")
-   endif()
-   
-   _get_firmware_build_dir("${args_FIRMWARE_BUILD_ID}" firmware_build_dir)
-   
-   message("Adding test ${args_TEST_NAME}")
-   
+   # Tests are run by CTest. To be portable, we use a CMake script to 
+   # drive the test that is generated during configuration.
+   #
    set(test_driver_script 
       "${cmake_scripts_dir}/run_test_${args_TEST_ID}.script.cmake")
       
-   file(WRITE "${test_driver_script}" "\
-include(\"${CMAKE_SOURCE_DIR}/cmake/execute_process.cmake\")
+   # If we are currently testing Leidokos-Python, we want the firmware
+   # to depend on 
+   if(   target_module_is_leidokos_python
+     AND LEIDOKOS_TESTING_TARGET_REPO_IS_FIRMWARE_MODULE
+   )
+      set(leidokos_python_module_search_path "${target_module_dir}")
+   else()
+      set(leidokos_python_module_search_path "${firmware_build_dir}/hardware/keyboardio/avr/libraries/Leidokos-Python/python")
+   endif()
+      
+   file(WRITE "${test_driver_script}" 
+"\
+include(\"${CMAKE_SOURCE_DIR}/cmake/execute_process.macros.cmake\")
+include(\"${CMAKE_SOURCE_DIR}/cmake/log.macros.cmake\")
 
-set(ENV{PYTHONPATH} \"${firmware_build_dir}:${firmware_build_dir}/hardware/keyboardio/avr/libraries/Leidokos-Python/python\")
+set(log_file \"${test_logs_dir}/${args_TEST_NAME}.log\")
+file(REMOVE \"\${log_file}\")
 
-message(\"PYTHONPATH = \$ENV{PYTHONPATH}\")
+set(ENV{PYTHONPATH} \"${firmware_build_dir}:${leidokos_python_module_search_path}\")
+
+log(\"PYTHONPATH = \$ENV{PYTHONPATH}\")
 
 _execute_process(
    \"running test firmware build ${args_TEST_ID}\"
-   COMMAND \"${PYTHON_EXECUTABLE}\" \"${args_PYTHON_DRIVER}\"
+   RESULT_VARIABLE test_result
+   COMMAND \"${PYTHON_EXECUTABLE}\" \"${args_PYTHON_DRIVER}\" ${args_DRIVER_CMD_LINE_FLAGS} 
    WORKING_DIRECTORY \"${firmware_build_dir}\"
 )
+
+if(NOT \${test_result} EQUAL 0)
+   log(FATAL_ERROR \"Test failed\")
+endif()
 ")
    
+   # Register the test with CTest.
+   #
    add_test(
       NAME "${args_TEST_NAME}"
       COMMAND "${CMAKE_COMMAND}" -P "${test_driver_script}"
@@ -544,8 +799,8 @@ endfunction() # end of kaleidoscope_test
 #
 enable_testing()
 
-# By including the test definition file, a number of calls 
+# When including the test definition file, a number of calls 
 # to kaleidoscope_firmware_build(...) and kaleidoscope_test(...)
-# are executed.
+# are executed and firmware builds and tests are registered.
 #
 include("${cmake_test_definitions_file}")
