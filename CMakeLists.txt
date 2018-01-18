@@ -113,7 +113,7 @@ that is supposed to be tested"
       "check out commit of Kaleidoscope module \
 \"${LEIDOKOS_TESTING_TARGET_URL}\" \
 that is supposed to be tested"
-      COMMAND "${GIT_EXECUTABLE}" checkout origin/${LEIDOKOS_TESTING_TARGET_COMMIT} 
+      COMMAND "${GIT_EXECUTABLE}" checkout ${LEIDOKOS_TESTING_TARGET_COMMIT} 
       WORKING_DIRECTORY "${target_module_dir}"
    )
 
