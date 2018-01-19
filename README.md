@@ -1,3 +1,12 @@
+![status][st:experimental] [![Build Status][travis:image]][travis:status]
+
+[travis:image]: https://travis-ci.org/CapeLeidokos/Leidokos-Testing.svg?branch=master
+[travis:status]: https://travis-ci.org/CapeLeidokos/Leidokos-Testing
+
+[st:stable]: https://img.shields.io/badge/stable-✔-black.svg?style=flat&colorA=44cc11&colorB=494e52
+[st:broken]: https://img.shields.io/badge/broken-X-black.svg?style=flat&colorA=e05d44&colorB=494e52
+[st:experimental]: https://img.shields.io/badge/experimental----black.svg?style=flat&colorA=dfb317&colorB=494e52
+
 # Leidokos-Testing
 Leidokos-Testing is a regression testing system for the Kaleidoscope firmware.
 It allows to test individual Kaleidoscope modules (core, plugins, etc.).

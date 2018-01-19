@@ -445,8 +445,8 @@ function(kaleidoscope_firmware_build)
    endif()
    
    set(LEIDOKOS_TESTING_TARGET_REPO_IS_FIRMWARE_MODULE FALSE CACHE BOOL
-      "It this flag is enabled, the target repository is automatically added "
-      "to the firmware modules")
+      "It this flag is enabled, the target repository is automatically added \
+to the firmware modules")
       
    if(LEIDOKOS_TESTING_TARGET_REPO_IS_FIRMWARE_MODULE)
       log("   Adding target ${LEIDOKOS_TESTING_TARGET_URL} to firmware modules")
@@ -509,7 +509,7 @@ There are ${n_urls} URLs (${args_URL}) and ${n_commits} (${args_COMMIT}) commits
    
       # Add explicitly specified firmware modules.
 
-      log("   Non-default modules:")
+      log("   Non-default modules (${n_urls}):")
    
       math(EXPR max_id "${n_urls} - 1")
    
@@ -527,6 +527,14 @@ There are ${n_urls} URLs (${args_URL}) and ${n_commits} (${args_COMMIT}) commits
          endif()
          if("${module_name}" STREQUAL "__NONE__")
             set(module_name "")
+         endif()
+         
+         if("${url}" STREQUAL "__TARGET__")
+            set(url "${LEIDOKOS_TESTING_TARGET_URL}")
+         endif()
+         
+         if("${commit}" STREQUAL "__TARGET__")
+            set(commit "${LEIDOKOS_TESTING_TARGET_COMMIT}")
          endif()
          
          macro(_clone_firmware_module_if_non_existent) 
@@ -638,6 +646,13 @@ and an empty NAME has been provided.")
             if("${url}" STREQUAL "")
                _fetch_firmware_module()
             else()
+            
+               if("${module_name}" STREQUAL "__REMOVE_DEFAULT__")
+                  get_filename_component(module_name "${url}" NAME_WE) 
+                  if(NOT IS_DIRECTORY "${firmware_libraries_dir}/${module_name}/.git")
+                     _remove_firmware_module("${module_name}")
+                  endif()
+               endif()
                _clone_firmware_module_if_non_existent()
             endif()
                
