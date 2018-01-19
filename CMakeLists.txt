@@ -29,6 +29,13 @@ if(EXISTS "${overall_log_file}")
    file(REMOVE "${overall_log_file}")
 endif()
 
+set(log_file "${overall_log_file}")
+
+# Define some standard submodules from the Arduino-Boards repo
+# that are required for a minimum firmware build
+#
+set(default_firmware_modules "Kaleidoscope;Kaleidoscope-Ranges")
+
 # We need git to clone remote repositories
 #
 find_package(Git REQUIRED)
@@ -70,8 +77,8 @@ if("${LEIDOKOS_TESTING_TARGET_URL}" STREQUAL "")
    log(FATAL_ERROR "Empty LEIDOKOS_TESTING_TARGET_URL provided")
 endif()
 
-log("target URL: ${LEIDOKOS_TESTING_TARGET_URL}")
-log("target commit: ${LEIDOKOS_TESTING_TARGET_COMMIT}")
+log("Target URL: ${LEIDOKOS_TESTING_TARGET_URL}")
+log("Target commit: ${LEIDOKOS_TESTING_TARGET_COMMIT}")
       
 # The target URL can be an existing path of the local
 # file system
@@ -157,7 +164,7 @@ endif()
 
 if("${target_repo_dir_basename}" STREQUAL "Leidokos-Python")
    set(target_module_is_leidokos_python TRUE)
-   log("testing Leidokos-Python")
+   log("Testing Leidokos-Python")
 else()
    set(target_module_is_leidokos_python FALSE)
 endif()
@@ -346,14 +353,16 @@ function(kaleidoscope_firmware_build)
    _determine_firmware_build_dir("${args_BUILD_ID}" firmware_build_dir)
    file(MAKE_DIRECTORY "${firmware_build_dir}")
    
-   log("Preparing firmware build in ${firmware_build_dir}")
-   
-   set(log_file "${firmware_build_dir}/leidokos-testing.configure.log.txt")
+   set(configure_log_file "${firmware_build_dir}/leidokos-testing.configure.log.txt")
    set(build_log_file "${firmware_build_dir}/leidokos-testing.build.log.txt")
    
-   if(EXISTS "${log_file}")
-      file(REMOVE "${log_file}")
+   if(EXISTS "${configure_log_file}")
+      file(REMOVE "${configure_log_file}")
    endif()
+   
+   set(log_file "${configure_log_file}")
+   
+   log("Preparing firmware build in ${firmware_build_dir}")
    
    # Prepare the firmware directory
    #
@@ -369,9 +378,9 @@ function(kaleidoscope_firmware_build)
       set(args_BOARDS_COMMIT "origin/regression_testing")
    endif()
    
-   log("   boards url: ${args_BOARDS_URL}")
-   log("   boards commit: ${args_BOARDS_COMMIT}")
-   log("   sketch: ${args_FIRMWARE_SKETCH}")
+   log("   Sketch: ${args_FIRMWARE_SKETCH}")
+   log("   Boards url: ${args_BOARDS_URL}")
+   log("   Boards commit: ${args_BOARDS_COMMIT}")
    
    # Only clone and checkout the boards directory once. 
    # During consecutive configuration runs, modules 
@@ -391,25 +400,48 @@ function(kaleidoscope_firmware_build)
          COMMAND "${GIT_EXECUTABLE}" checkout
             "${args_BOARDS_COMMIT}"
          WORKING_DIRECTORY "${firmware_build_dir}/hardware/keyboardio/avr"
-      )
-      
-      _execute_process(
-         "update boards submodules"
-         COMMAND "${GIT_EXECUTABLE}" submodule update --init
-         WORKING_DIRECTORY "${firmware_build_dir}/hardware/keyboardio/avr"
-      )
+      )      
       
       _execute_process(
          "syncronize boards submodules"
-         COMMAND "${GIT_EXECUTABLE}" submodule sync --recursive
+         COMMAND "${GIT_EXECUTABLE}" submodule sync
          WORKING_DIRECTORY "${firmware_build_dir}/hardware/keyboardio/avr"
       )
       
-      _execute_process(
-         "update boards submodules"
-         COMMAND "${GIT_EXECUTABLE}" submodule update --init --recursive
-         WORKING_DIRECTORY "${firmware_build_dir}/hardware/keyboardio/avr"
+      log("   Boards default firmware modules")
+      
+      function(_update_submodule
+         module_name_
       )
+         _execute_process(
+            "update boards submodules"
+            COMMAND "${GIT_EXECUTABLE}" submodule update --init "libraries/${module_name_}"
+            WORKING_DIRECTORY "${firmware_build_dir}/hardware/keyboardio/avr"
+         )
+      
+         _execute_process(
+            "syncronize boards submodules"
+            COMMAND "${GIT_EXECUTABLE}" submodule sync --recursive
+            WORKING_DIRECTORY "${firmware_build_dir}/hardware/keyboardio/avr/libraries/${module_name_}"
+         )
+      
+         _execute_process(
+            "update boards submodules"
+            COMMAND "${GIT_EXECUTABLE}" submodule update --init --recursive
+            WORKING_DIRECTORY "${firmware_build_dir}/hardware/keyboardio/avr/libraries/${module_name_}"
+         )
+      endfunction()
+      
+      foreach(default_module ${default_firmware_modules})
+      
+         log("      ${default_module}")
+         _update_submodule("${default_module}")
+      endforeach()
+   else()
+      log("   Boards default firmware modules")
+      foreach(default_module ${default_firmware_modules})
+         log("      ${default_module}")
+      endforeach()
    endif()
    
    set(LEIDOKOS_TESTING_TARGET_REPO_IS_FIRMWARE_MODULE FALSE CACHE BOOL
@@ -467,14 +499,17 @@ There are ${n_urls} URLs (${args_URL}) and ${n_commits} (${args_COMMIT}) commits
          "The number of URLs and names must match")
    endif()
    
+   set(boards_dir 
+      "${firmware_build_dir}/hardware/keyboardio/avr")
+   
    set(firmware_libraries_dir 
-      "${firmware_build_dir}/hardware/keyboardio/avr/libraries")
+      "${boards_dir}/libraries")
    
    if(n_urls GREATER 0)
    
       # Add explicitly specified firmware modules.
 
-      log("   modules:")
+      log("   Non-default modules:")
    
       math(EXPR max_id "${n_urls} - 1")
    
@@ -494,40 +529,7 @@ There are ${n_urls} URLs (${args_URL}) and ${n_commits} (${args_COMMIT}) commits
             set(module_name "")
          endif()
          
-         # If a module_name is defined for a module, the respective module that
-         # comes with the stock firmware (boards repo) is removed.
-         #
-         if(NOT "${module_name}" STREQUAL "")
-            
-            set(kaleidoscope_module_path "${firmware_libraries_dir}/${module_name}")
-            
-            if(EXISTS "${kaleidoscope_module_path}")
-            
-               _execute_process(
-                  "determine URL of Kaleidoscope module \"${url}\""
-                  COMMAND "${GIT_EXECUTABLE}" remote get-url origin
-                  OUTPUT_VARIABLE current_remote_url
-                  OUTPUT_STRIP_TRAILING_WHITESPACE
-                  WORKING_DIRECTORY "${kaleidoscope_module_path}"
-               )
-               
-               if(NOT "${current_remote_url}" STREQUAL "${url}")
-               
-                  log("      Removing pre-existing module ${module_name}")
-
-                  file(REMOVE_RECURSE "${kaleidoscope_module_path}")
-               endif()
-            endif()
-         endif()
-         
-         set(just_cloned FALSE)
-         
-         # If a URL is provided for the module, 
-         # it is cloned to hardware/keyboardio/avr/libraries.
-         #
-         if(NOT "${url}" STREQUAL "")
-            
-            get_filename_component(module_name "${url}" NAME_WE) 
+         macro(_clone_firmware_module_if_non_existent) 
          
             # We clone only once (if the module directory does not yet exist).
             #
@@ -536,54 +538,111 @@ There are ${n_urls} URLs (${args_URL}) and ${n_commits} (${args_COMMIT}) commits
                log("      Cloning module ${url}")
                _execute_process(
                   "clone Kaleidoscope module \"${url}\""
-                  COMMAND "${GIT_EXECUTABLE}" clone --recursive
-                     "${url}"
+                  COMMAND "${GIT_EXECUTABLE}" clone
+                     "${url}" "${module_name}"
                   WORKING_DIRECTORY "${firmware_libraries_dir}"
                )
-               
-               set(just_cloned TRUE)
             endif()
-         endif()
+         endmacro()
          
-         # At this point module_name must be non-empty
-         #
-         if("${module_name}" STREQUAL "")
-            _configuration_error_build(${args_BUILD_ID} "Empty module name")
-         endif()
-         
-         if(NOT just_cloned)
-         
+         macro(_fetch_firmware_module)
+               
+            log("      Fetching remote of module ${module_name}")
             _execute_process(
                "fetch remote of module ${module_name}"
                COMMAND "${GIT_EXECUTABLE}" fetch 
                WORKING_DIRECTORY "${firmware_libraries_dir}/${module_name}"
             )
-         endif()
+         endmacro()
+         
+         macro(_update_firware_module)
+         
+            # If a commit is defined, it is checked out and all git submodules
+            # are updated.
+            #
+            log("      Checking out ${commit} of module ${module_name}")
+            _execute_process(
+               "check out commit ${commit} in module ${module_name}"
+               COMMAND "${GIT_EXECUTABLE}" checkout ${commit}
+               WORKING_DIRECTORY "${firmware_libraries_dir}/${module_name}"
+            )
+            
+            if(IS_DIRECTORY "${firmware_libraries_dir}/${module_name}/.git")
+            
+               # The module is a submodule by itself
                
-         # If a commit is defined, it is checked out and all git submodules
-         # are updated.
-         #
-         log("      Checking out ${commit} of module ${module_name}")
-         _execute_process(
-            "check out commit ${commit} in module ${module_name}"
-            COMMAND "${GIT_EXECUTABLE}" checkout ${commit}
-            WORKING_DIRECTORY "${firmware_libraries_dir}/${module_name}"
+               _execute_process(
+                  "update module ${module_name} recursively"
+                  COMMAND "${GIT_EXECUTABLE}" submodule update --init
+                  WORKING_DIRECTORY "${firmware_libraries_dir}/${module_name}"
+               )
+               _execute_process(
+                  "syncronize submodules of module ${module_name}"
+                  COMMAND "${GIT_EXECUTABLE}" submodule sync --recursive
+                  WORKING_DIRECTORY "${firmware_libraries_dir}/${module_name}"
+               )
+               _execute_process(
+                  "update module ${module_name} recursively"
+                  COMMAND "${GIT_EXECUTABLE}" submodule update --init --recursive
+                  WORKING_DIRECTORY "${firmware_libraries_dir}/${module_name}"
+               )
+            else()
+            
+               # The module is a submodule of Arduino-Boards
+               
+               _execute_process(
+                  "update module ${module_name} recursively"
+                  COMMAND "${GIT_EXECUTABLE}" submodule update --init -- "libraries/${module_name}"
+                  WORKING_DIRECTORY "${boards_dir}"
+               )
+               _execute_process(
+                  "syncronize submodules of module ${module_name}"
+                  COMMAND "${GIT_EXECUTABLE}" submodule sync --recursive -- "libraries/${module_name}"
+                  WORKING_DIRECTORY "${boards_dir}"
+               )
+               _execute_process(
+                  "update module ${module_name} recursively"
+                  COMMAND "${GIT_EXECUTABLE}" submodule update --init --recursive -- "libraries/${module_name}"
+                  WORKING_DIRECTORY "${boards_dir}"
+               )
+            
+            endif()
+            
+         endmacro()
+         
+         macro(_remove_firmware_module
+            module_name_
          )
-         _execute_process(
-            "update module ${module_name} recursively"
-            COMMAND "${GIT_EXECUTABLE}" submodule update --init
-            WORKING_DIRECTORY "${firmware_libraries_dir}/${module_name}"
-         )
-         _execute_process(
-            "syncronize submodules of module ${module_name}"
-            COMMAND "${GIT_EXECUTABLE}" submodule sync --recursive
-            WORKING_DIRECTORY "${firmware_libraries_dir}/${module_name}"
-         )
-         _execute_process(
-            "update module ${module_name} recursively"
-            COMMAND "${GIT_EXECUTABLE}" submodule update --init --recursive
-            WORKING_DIRECTORY "${firmware_libraries_dir}/${module_name}"
-         )
+            log("      Removing pre-existing module ${module_name_}")
+
+            file(REMOVE_RECURSE "${firmware_libraries_dir}/${module_name_}")
+         endmacro()
+         
+         if("${module_name}" STREQUAL "")
+         
+            # If no module name (NAME) is provided, a module is cloned 
+            # by its URL and possibly its COMMIT.
+         
+            if("${url}" STREQUAL "")
+               _configuration_error_build(${args_BUILD_ID} 
+                  "A module specification with both an empty URL \
+and an empty NAME has been provided.")
+            endif()
+            
+            get_filename_component(module_name "${url}" NAME_WE) 
+            
+            _clone_firmware_module_if_non_existent()
+            _update_firware_module()
+
+         else()
+            if("${url}" STREQUAL "")
+               _fetch_firmware_module()
+            else()
+               _clone_firmware_module_if_non_existent()
+            endif()
+               
+            _update_firware_module()
+         endif()
             
       endforeach()
    endif()
@@ -683,8 +742,8 @@ _execute_process(
       OUTPUT "${firmware_binary}"
       COMMAND "${CMAKE_COMMAND}" 
          "-Dlog_file=${build_log_file}" -P "${firmware_build_script}"
-      COMMENT "Building Kaleidoscope firmware from \
-sketch \"${args_FIRMWARE_SKETCH}\""
+      COMMENT "Building Kaleidoscope firmware ${args_BUILD_ID} \
+(\"${firmware_build_dir}\")"
    )
    
    # Define a CMake-target to build the firmware

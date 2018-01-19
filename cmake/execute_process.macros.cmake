@@ -24,12 +24,15 @@
    
    cmake_parse_arguments(args "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN} )
    
+   string(TIMESTAMP start_time "%Y-%m-%dT %H:%M:%S")
+   
    execute_process(
       ${args_UNPARSED_ARGUMENTS}
       RESULT_VARIABLE result
       OUTPUT_VARIABLE output
       ERROR_VARIABLE error
    )
+   string(TIMESTAMP end_time "%Y-%m-%dT %H:%M:%S")
    
    if(NOT "${log_file}" STREQUAL "")
       file(APPEND "${log_file}"
@@ -39,6 +42,11 @@ ${explanation_}
 Command
 *****************************************************************
 ${args_UNPARSED_ARGUMENTS}
+*****************************************************************
+Timing
+*****************************************************************
+Start: ${start_time}
+End  : ${end_time}
 *****************************************************************
 Exit code
 *****************************************************************

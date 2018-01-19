@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
  
- function(log)
+function(log)
 
    set(options "FATAL_ERROR" "SEND_ERROR" "WARNING")
    set(one_value_args "")
@@ -26,14 +26,14 @@
    if(NOT "${log_file}" STREQUAL "")
    
       if(args_FATAL_ERROR OR args_SEND_ERROR)
-         file(WRITE "${log_file}" "ERROR: ")
+         file(APPEND "${log_file}" "ERROR: ")
       endif()
       
       if(args_WARNING)
-         file(WRITE "${log_file}" "WARNING: ")
+         file(APPEND "${log_file}" "WARNING: ")
       endif()
       
-      file(WRITE "${log_file}" "${args_UNPARSED_ARGUMENTS}")
+      file(APPEND "${log_file}" "${args_UNPARSED_ARGUMENTS}\n")
       
    endif()
    

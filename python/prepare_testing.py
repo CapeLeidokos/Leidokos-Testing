@@ -63,10 +63,10 @@
 # directory is used instead.
 #
 # All tests use a dedicated firmware that is defined by the set of custom modules
-# and the firmware sketch. Custom modules can override stock modules
-# by specifying their name. If a custom module is given a name but 
-# no url, the stock module with same name is deleted before the firmware
-# is build.
+# and the firmware sketch. If a custom module is given a name but 
+# no url, the stock module with same name is used. If both, a name and 
+# an url are specified, the remote git repository specified by url is 
+# cloned to the local libraries sub-directory specified by name.
 #
 # Tests that define equal combinations of custom modules and firmware sketch share
 # a common firmware build to minimize the amount of build overhead.
@@ -237,9 +237,9 @@ class KaleidoscopeModule(object):
       
       m = hashlib.sha256()
       
-      m.update(self.url)
-      m.update(self.commit)
-      m.update(self.name)
+      m.update(str(self.url).encode('utf-8'))
+      m.update(str(self.commit).encode('utf-8'))
+      m.update(str(self.name).encode('utf-8'))
       
       return m.hexdigest()
     
@@ -249,13 +249,13 @@ class FirmwareBuild(Entity):
       
       if parent_build:
          self.modules = parent_build.modules
-         self.digests = parent_build.digests
+         self.module_digests = parent_build.module_digests
          self.firmware_sketch = parent_build.firmware_sketch
          self.boards_url = parent_build.boards_url
          self.boards_commit = parent_build.boards_commit
       else:
          self.modules = []
-         self.digests = []
+         self.module_digests = []
          self.firmware_sketch = None
          self.boards_url = None
          self.boards_commit = None
@@ -273,12 +273,12 @@ class FirmwareBuild(Entity):
    #
    def containsModule(self, new_module):
           
-      new_digest = new_module.getDigest()
+      new_module_digest = new_module.getDigest()
 
       # Check if a module with same digest is already present
       #
       try:
-         list_index = self.digests.index(new_digest)
+         list_index = self.module_digests.index(new_module_digest)
          
          # The fact that no exception has been thrown 
          # indicates that a matching digest was found.
@@ -302,10 +302,10 @@ class FirmwareBuild(Entity):
       new_self = FirmwareBuild(self)
       
       # This firmware build must be made unique.
-      # Therefore, make a shallow copy of modules and digests. 
+      # Therefore, make a shallow copy of modules and module_digests. 
       #
-      new_self.new_modules = copy.copy(self.modules)
-      new_self.digests = copy.copy(self.digests)
+      new_self.modules = copy.copy(self.modules)
+      new_self.module_digests = copy.copy(self.module_digests)
       new_self.firmware_sketch = self.firmware_sketch
       
       return new_self
@@ -328,30 +328,30 @@ class FirmwareBuild(Entity):
          for i, module in enumerate(self.modules):
             if module.name == new_name:
                self.modules[i] = new_module
-               self.digests[i] = new_digest
+               self.module_digests[i] = new_digest
                do_append = False
                break
             
       if do_append:
          self.modules.append(new_module)
-         self.digests.append(new_digest)
+         self.module_digests.append(new_digest)
             
-   # Computes the digests of all modules. As the order of
+   # Computes the module_digests of all modules. As the order of
    # updating the overall digest is not commutative 
    # with respect to the members, we have to sort them first
    #
    def getDigest(self):
 
-      digests = []
+      module_digests = []
       for module in self.modules:
-         digests.append(module.getDigest())
+         module_digests.append(module.getDigest())
       
-      digests.sort()
+      module_digests.sort()
       
       m = hashlib.sha256()
       
-      for digest in digests:
-         m.update(str(digest))
+      for digest in module_digests:
+         m.update(str(digest).encode('utf-8'))
          
       m.update(str(self.boards_url).encode('utf-8'))
       m.update(str(self.boards_commit).encode('utf-8'))
@@ -594,9 +594,9 @@ class TestNode(object):
          for module_dict in new_modules:
          
             new_module = KaleidoscopeModule()
-            new_module.url = module_dict.get("url")
-            new_module.commit = module_dict.get("commit")
-            new_module.name = module_dict.get("name")
+            new_module.url = module_dict.get("url") or "__NONE__"
+            new_module.commit = module_dict.get("commit") or "__NONE__"
+            new_module.name = module_dict.get("name") or "__NONE__"
 
             # If we find a module that is not contained in 
             # the current set of modules
@@ -616,23 +616,28 @@ class TestNode(object):
   
       self.firmware_build = self.firmware_build.clone()
       self.firmware_build.path = self.path
-      self.needs_own_firmware_build = True
+      self.has_dedicated_firmware = True
       
       #sys.stdout.write("FB after clone: " + str(id(self.firmware_build)) + "\n")
+      #sys.stdout.write("FB.modules after clone: " + str(id(self.firmware_build.modules)) + "\n")
       
    def conditionallyCloneFirmwareBuild(self):
-      if not self.needs_own_firmware_build:
+      if not self.has_dedicated_firmware:
          self.cloneFirmwareBuild()
                
    def setup(self):
       
       if self.parent:
          self.firmware_build = self.parent.firmware_build
-         self.needs_own_firmware_build = False
+         self.has_dedicated_firmware = False
       else:
+         
+         # The root node has its own FirmwareBuild class to be able
+         # to inherit properties.
+         
          self.firmware_build = FirmwareBuild()
          self.firmware_build.path = self.path
-         self.needs_own_firmware_build = True
+         self.has_dedicated_firmware = True
       
       # Check if there is a __external__ directory.
       # Such a directory could, e.g. be a git submodule.
@@ -789,7 +794,7 @@ def check_test_name_uniqueness(test_nodes_by_path):
 # specify identical firmware modules and sketch. The corresponding 
 # firmware builds can, however, be shared. To detect this
 # we compute a digest of every firmware build, join builds with
-# identical digests and finally assign the unique builds to the test nodes.
+# identical module_digests and finally assign the unique builds to the test nodes.
 #
 def determine_unique_firmware_builds(test_nodes_by_path):
 
@@ -801,7 +806,7 @@ def determine_unique_firmware_builds(test_nodes_by_path):
    for test_node in test_nodes_by_path.values():
       
       if test_node.generatesTests() and \
-            test_node.needs_own_firmware_build:
+            test_node.has_dedicated_firmware:
          
          my_digest = test_node.firmware_build.getDigest()
          
@@ -845,7 +850,8 @@ def export_as_cmake(cmake_filename,
    cmake_file.write("# Kaleidoscope firmware builds\n")
    sep_line(cmake_file)
    
-   for digest, firmware_build in unique_firmware_builds_by_digest.items():
+   for digest, firmware_build in sorted(unique_firmware_builds_by_digest.items(), key=lambda x: x[1].set_id):
+   #for digest, firmware_build in unique_firmware_builds_by_digest.items():
       cmake_file.write("kaleidoscope_firmware_build(\n")
       cmake_file.write("   BUILD_ID \"" + str(firmware_build.set_id) + "\"\n")
       if firmware_build.boards_url:
