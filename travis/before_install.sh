@@ -25,7 +25,7 @@ if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
    brew install python3
 #    brew install boost --with-python
    brew install boost-python
-   sudo easy_install pip3
+#    sudo easy_install pip3
    sudo -H pip3 install pyyaml
    sudo -H pip3 install sphinx
 
