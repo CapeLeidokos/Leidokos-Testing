@@ -17,12 +17,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 set -e
+set -o xtrace
 
 if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
 
-   brew update
+   brew list
    brew install python3
-   brew install boost --with-python
+#    brew install boost --with-python
    brew install boost-python
    sudo easy_install pip3
    sudo -H pip3 install pyyaml
