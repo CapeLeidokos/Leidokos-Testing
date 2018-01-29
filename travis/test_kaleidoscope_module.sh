@@ -68,7 +68,7 @@ cmake \
    "-DLEIDOKOS_TESTING_TARGET_COMMIT=${git_branch}" \
    "-DLEIDOKOS_TESTING_TARGET_REPO_IS_FIRMWARE_MODULE=TRUE" \
    "-DBoost_PYTHON_LIBRARY_RELEASE=${python_so_path}" \
-   "-DBoost_PYTHON_3_LIBRARY=${python_so_path}" \
+   "-DBoost_PYTHON_3_LIBRARY_RELEASE=${python_so_path}" \
    "-DPYTHON_EXECUTABLE=${python_executable}" \
    ${leidokos_testing_dir}
 
