@@ -24,6 +24,7 @@ if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
 #    brew list
    brew install python3
 #    brew install boost --with-python
+   brew info boost-python
    brew install boost-python
 #    sudo easy_install pip3
    sudo -H pip3 install pyyaml
