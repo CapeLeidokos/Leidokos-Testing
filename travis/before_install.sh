@@ -22,7 +22,7 @@ set -o xtrace
 if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
 
    brew list
-   brew install python3
+   brew install python3 3.6.4_2
 #    brew install boost --with-python
    brew install boost-python
 #    sudo easy_install pip3
