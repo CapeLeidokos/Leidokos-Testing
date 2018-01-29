@@ -22,9 +22,9 @@ set -o xtrace
 if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
 
    brew list
-   brew install python3-3.6.4
+   brew switch python3 3.6.4
 #    brew install boost --with-python
-   brew install boost-python-1.66.0
+   brew switch boost-python 1.66.0
 #    sudo easy_install pip3
    sudo -H pip3 install pyyaml
    sudo -H pip3 install sphinx
