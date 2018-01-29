@@ -56,11 +56,8 @@ fi
 
 if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
    ls -l /usr/local/lib
-   python_so_path="/usr/lib/libboost_python-py34.so"
-   if [ ! -f "${python_so_path}" ]; then
-      find /usr/local/lib -name "libboost_python*"
-   fi
-   python_executable="/usr/local/Cellar/python3/3.6.4_2/bin/python3"
+   python_so_path="/usr/local/lib/libboost_python.dylib"
+   python_executable="/usr/local/bin/python3"
 else
    python_so_path="/usr/lib/x86_64-linux-gnu/libboost_python-py34.so"
    python_executable="/usr/bin/python3"
