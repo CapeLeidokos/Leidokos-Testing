@@ -22,9 +22,10 @@ set -o xtrace
 if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
 
 #    brew list
+   brew install ccache
    brew install python3
 #    brew install boost --with-python
-   brew info boost-python
+#    brew info boost-python
    brew install boost-python --with-python3 --without-python
 #    sudo easy_install pip3
    sudo -H pip3 install pyyaml

@@ -55,7 +55,7 @@ else
 fi
 
 if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
-   ls -l /usr/local/lib
+#    ls -l /usr/local/lib
    python_so_path="/usr/local/lib/libboost_python3.dylib"
    python_executable="/usr/local/bin/python3"
 else
