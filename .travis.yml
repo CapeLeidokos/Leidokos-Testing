@@ -1,7 +1,9 @@
 dist: trusty
 sudo: required
+language: generic
 os:
  - linux
+ - osx
  
 # Only test direct pushes to master
 #
@@ -14,16 +16,11 @@ before_install:
    - git clone --recursive https://github.com/CapeLeidokos/Leidokos-Testing.git
    - Leidokos-Testing/travis/before_install.sh
 
-script: skip
-    
-jobs:
-  include:
-    - stage: test
-      script:
-         - cd $HOME
-         - mkdir ktest
-         - cd ktest
-         - $HOME/Leidokos-Testing/travis/test_kaleidoscope_module.sh https://github.com/CapeLeidokos/Kaleidoscope-OneShot feature/python_export
+script:
+   - cd $HOME
+   - mkdir ktest
+   - cd ktest
+   - $HOME/Leidokos-Testing/travis/test_kaleidoscope_module.sh https://github.com/CapeLeidokos/Kaleidoscope-OneShot feature/python_export
          
 notifications:
   email:
