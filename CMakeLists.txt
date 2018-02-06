@@ -733,6 +733,8 @@ and an empty NAME has been provided.")
    _init_cmake_variable(PYTHON_INCLUDE_DIR)
    _init_cmake_variable(PYTHON_LIBRARY)
    _init_cmake_variable(PYTHON_LIBRARY_DEBUG)
+   _init_cmake_variable(CMAKE_C_COMPILER)
+   _init_cmake_variable(CMAKE_CXX_COMPILER)
    
    # Generate the firmware build script.
    #
