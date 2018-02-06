@@ -5,6 +5,19 @@ rem Determine the number of command line arguments
 set argC=0
 for %%x in (%*) do Set /A argC+=1
 
+if %argC% gtr 0 (
+   set module_git_url=%1
+) else if not [%APPVEYOR_PULL_REQUEST_HEAD_REPO_NAME%] == [] (
+   set module_git_url="https://github.com/%APPVEYOR_PULL_REQUEST_HEAD_REPO_NAME%.git"
+) else if not [%APPVEYOR_REPO_NAME%] == [] (
+   set module_git_url="https://github.com/%APPVEYOR_REPO_NAME%.git"
+) else (
+   echo "No module git URL specified"
+   echo "Either pass the URL as first argument to this script or define"
+   echo "one of the environment variable APPVEYOR_REPO_NAME (as owner/repo)"
+   exit /b 1
+)
+
 if %argC% gtr 1 (
    set git_branch=%2
 ) else if not [%APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH%] == [] (
