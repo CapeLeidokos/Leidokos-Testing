@@ -139,6 +139,7 @@ def find_file(name, path):
 
 def find_unique_file(pattern, path, file_type_descr):
    
+   sys.stdout.write("Searching for file of pattern %s in path %s\n" % (pattern, path))
    files = find_files(pattern, path)
    
    n_files = len(files)
@@ -150,6 +151,9 @@ def find_unique_file(pattern, path, file_type_descr):
          sys.stdout.write("Warning: Multiple " + file_type_descr + " found in directory \""
             + path + "\". Using the first encounter \""
             + selected_file + "\"")
+         
+   sys.stdout.write("   found \"%s\"\n" % str(selected_file))
+         
    return selected_file
 
 # The names of the files and directories
