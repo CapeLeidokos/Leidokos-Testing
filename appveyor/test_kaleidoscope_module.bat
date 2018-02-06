@@ -35,9 +35,6 @@ set python_executable=C:\msys64\mingw64\bin\python3.exe
 set cmake_executable=C:\msys64\mingw64\bin\cmake.exe
 set ctest_executable=C:\msys64\mingw64\bin\ctest.exe
 
-set CC=C:\msys64\usr\bin\gcc.exe
-set CXX=C:\msys64\usr\bin\g++.exe
-
 %cmake_executable% ^
    -G Ninja ^
    "-DLEIDOKOS_TESTING_TARGET_URL=%module_git_url%" ^
