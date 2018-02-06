@@ -1,5 +1,5 @@
-SET CUR_DIR=%~dp0
-leidokos_testing_dir="%CUR_DIR%/.."
+set CUR_DIR=%~dp0
+set leidokos_testing_dir="%CUR_DIR%\.."
 
 rem Determine the number of command line arguments
 set argC=0
