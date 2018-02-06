@@ -213,12 +213,14 @@ set(prepare_testing_file "${CMAKE_SOURCE_DIR}/python/prepare_testing.py")
 
 set(cmake_test_definitions_file "${CMAKE_BINARY_DIR}/test_definitions.cmake")
 
+file(TO_NATIVE_PATH "${LEIDOKOS_TESTING_TREE_ROOT}" testing_tree_root_native) 
+
 # Run Python to prepare the test definition file.
 #
 _execute_process(
    "prepare test file"
    COMMAND "${PYTHON_EXECUTABLE}" "${prepare_testing_file}"
-      -d "${LEIDOKOS_TESTING_TREE_ROOT}"
+      -d "${testing_tree_root_native}"
       -c "${cmake_test_definitions_file}"
 )
 
