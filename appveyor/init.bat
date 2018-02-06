@@ -12,7 +12,3 @@ C:\msys64\mingw64\bin\python3.exe "C:\msys64\mingw64\bin\pip3-script.py" install
 
 rem sphinx is only required to build the Leidokos-Python's API
 rem C:\msys64\mingw64\bin\python3.exe "C:\msys64\mingw64\bin\pip3-script.py" install sphinx
-
-set PATH=C:\msys64\mingw64\bin;%PATH%
-set CC=C:\msys64\usr\bin\gcc.exe
-set CXX=C:\msys64\usr\bin\g++.exe
