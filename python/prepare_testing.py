@@ -834,6 +834,9 @@ def determine_unique_firmware_builds(test_nodes_by_path):
 def sep_line(file):   
    file.write(
 "################################################################################\n")
+   
+def fix_path(path):
+   return path.replace('\\','/')
       
 # Exports firmware build and test information in a way that resembels
 # CMake function calls.
@@ -859,13 +862,13 @@ def export_as_cmake(cmake_filename,
       cmake_file.write("kaleidoscope_firmware_build(\n")
       cmake_file.write("   BUILD_ID \"" + str(firmware_build.set_id) + "\"\n")
       if firmware_build.boards_url:
-            cmake_file.write("   BOARDS_URL \"" + str(firmware_build.boards_url) + "\"\n")
+            cmake_file.write("   BOARDS_URL \"" + fix_path(str(firmware_build.boards_url)) + "\"\n")
       if firmware_build.boards_commit:
             cmake_file.write("   BOARDS_COMMIT \"" + str(firmware_build.boards_commit) + "\"\n")
       cmake_file.write("   DIGEST \"" + str(digest) + "\"\n")
-      cmake_file.write("   FIRMWARE_SKETCH \"" + firmware_build.firmware_sketch.filename + "\"\n")
+      cmake_file.write("   FIRMWARE_SKETCH \"" + fix_path(firmware_build.firmware_sketch.filename) + "\"\n")
       for mod in firmware_build.modules:
-         cmake_file.write("   URL \"" + mod.url + "\"\n")
+         cmake_file.write("   URL \"" + fix_path(mod.url) + "\"\n")
          cmake_file.write("   COMMIT \"" + mod.commit + "\"\n")
          cmake_file.write("   NAME \"" + mod.name + "\"\n")
       cmake_file.write(")\n")
@@ -904,11 +907,11 @@ def export_as_cmake(cmake_filename,
       cmake_file.write("\n") 
       cmake_file.write("   # Directories where information was found\n") 
       cmake_file.write("   #\n") 
-      cmake_file.write("   NAME_ORIGIN \"" + test_node.name.path + "\"\n")      
-      cmake_file.write("   DESCRIPTION_ORIGIN \"" + test_node.description.path + "\"\n")
+      cmake_file.write("   NAME_ORIGIN \"" + fix_path(test_node.name.path) + "\"\n")      
+      cmake_file.write("   DESCRIPTION_ORIGIN \"" + fix_path(test_node.description.path) + "\"\n")
       if test_node.driver_cmd_line_flags:
-         cmake_file.write("   DRIVER_CMD_LINE_FLAGS_ORIGIN \"" + test_node.driver_cmd_line_flags.path + "\"\n")
-      cmake_file.write("   FIRMWARE_BUILD_ORIGIN \"" + test_node.firmware_build.path + "\"\n")
+         cmake_file.write("   DRIVER_CMD_LINE_FLAGS_ORIGIN \"" + fix_path(test_node.driver_cmd_line_flags.path) + "\"\n")
+      cmake_file.write("   FIRMWARE_BUILD_ORIGIN \"" + fix_path(test_node.firmware_build.path) + "\"\n")
       
       cmake_file.write(")\n")
       cmake_file.write("\n")
