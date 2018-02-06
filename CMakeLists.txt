@@ -878,6 +878,9 @@ endfunction() # end of kaleidoscope_test
 #
 enable_testing()
 
+# file(READ "${cmake_test_definitions_file}" file_content)
+# message("${file_content}")
+
 # When including the test definition file, a number of calls 
 # to kaleidoscope_firmware_build(...) and kaleidoscope_test(...)
 # are executed and firmware builds and tests are registered.

@@ -898,7 +898,7 @@ def export_as_cmake(cmake_filename,
       if(test_node.driver_cmd_line_flags):
          cmake_file.write("   DRIVER_CMD_LINE_FLAGS \"" + test_node.driver_cmd_line_flags.value + "\"\n")
       cmake_file.write("   PYTHON_DRIVER \"" +
-                test_node.python_driver.filename + "\"\n")  
+                fix_path(test_node.python_driver.filename) + "\"\n")  
       cmake_file.write("   FIRMWARE_BUILD_ID \"" +
                 str(test_node.unique_firmware_build.set_id) + "\"\n")
       
