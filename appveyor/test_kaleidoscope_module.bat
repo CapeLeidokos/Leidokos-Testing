@@ -7,20 +7,20 @@ for %%x in (%*) do Set /A argC+=1
 
 if %argC% gtr 1 (
    set git_branch=%2
-) else if not [%TRAVIS_PULL_REQUEST_BRANCH%] == [] (
-   set git_branch=%TRAVIS_PULL_REQUEST_BRANCH%
-) else if not [%TRAVIS_BRANCH%] == [] (
-   set git_branch=%TRAVIS_BRANCH%
+) else if not [%APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH%] == [] (
+   set git_branch=%APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH%
+) else if not [%APPVEYOR_REPO_BRANCH%] == [] (
+   set git_branch=%APPVEYOR_REPO_BRANCH%
 ) else (
    echo "No testing branch specified, assuming master."
-   echo "Note: You can define the environment variable TRAVIS_BRANCH to set the branch."
+   echo "Note: You can define the environment variable APPVEYOR_REPO_BRANCH to set the branch."
    set git_branch="master"
 )
 
 set python_so_path=C:\msys64\mingw64\bin\libboost_python3-mt.dll
 set python_executable=C:\msys64\mingw64\bin\python3.exe
-set cmake_executable=C:\msys64\usr\bin\cmake.exe
-set ctest_executable=C:\msys64\usr\bin\ctest.exe
+set cmake_executable=C:\msys64\mingw64\bin\cmake.exe
+set ctest_executable=C:\msys64\mingw64\bin\ctest.exe
 
 %cmake_executable% ^
    "-DLEIDOKOS_TESTING_TARGET_URL=%module_git_url%" ^
