@@ -738,7 +738,7 @@ and an empty NAME has been provided.")
    
    # Generate the firmware build script.
    #
-   file(WRITE "${firmware_build_script}" "\
+   file(GENERATE OUTPUT "${firmware_build_script}" CONTENT "\
 include(\"${CMAKE_SOURCE_DIR}/cmake/execute_process.macros.cmake\")
 include(\"${CMAKE_SOURCE_DIR}/cmake/log.macros.cmake\")
 
@@ -747,6 +747,7 @@ file(REMOVE \"\${log_file}\")
 _execute_process(
    \"configure firmware build ${args_BUILD_ID}\"
    COMMAND \"${CMAKE_COMMAND}\" 
+      -G \"${CMAKE_GENERATOR}\"
       \"-DKALEIDOSCOPE_FIRMWARE_SKETCH=${args_FIRMWARE_SKETCH}\"
       ${leidokos_python_cmd_line_vars}
       \"${firmware_libraries_dir}/Leidokos-Python\"
