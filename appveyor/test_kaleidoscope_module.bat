@@ -7,9 +7,9 @@ for %%x in (%*) do Set /A argC+=1
 
 if %argC% gtr 1 (
    set git_branch=%2
-) else if [%TRAVIS_PULL_REQUEST_BRANCH%] != [] (
+) else if not [%TRAVIS_PULL_REQUEST_BRANCH%] == [] (
    set git_branch=%TRAVIS_PULL_REQUEST_BRANCH%
-) else if [%TRAVIS_BRANCH%] != [] (
+) else if not [%TRAVIS_BRANCH%] == [] (
    set git_branch=%TRAVIS_BRANCH%
 ) else (
    echo "No testing branch specified, assuming master."
