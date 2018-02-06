@@ -715,8 +715,10 @@ and an empty NAME has been provided.")
          return()
       endif()
       
+      file(TO_CMAKE_PATH "${${var_}}" var_cmake_path)
+      
       set("leidokos_python_cmd_line_vars" 
-         "${leidokos_python_cmd_line_vars} -D${var_}=${${var_}}" PARENT_SCOPE)
+         "${leidokos_python_cmd_line_vars} -D${var_}=${var_cmake_path}" PARENT_SCOPE)
    endfunction()
    
    _init_cmake_variable(Boost_DIR)
@@ -841,6 +843,9 @@ function(kaleidoscope_test)
    else()
       set(leidokos_python_module_search_path "${firmware_build_dir}/hardware/keyboardio/avr/libraries/Leidokos-Python/python")
    endif()
+   
+   file(TO_CMAKE_PATH "${PYTHON_EXECUTABLE}" python_executable_cmake)
+   file(TO_CMAKE_PATH "${args_PYTHON_DRIVER}" python_driver_cmake)
       
    file(WRITE "${test_driver_script}" 
 "\
@@ -857,7 +862,7 @@ log(\"PYTHONPATH = \$ENV{PYTHONPATH}\")
 _execute_process(
    \"run test firmware build ${args_TEST_ID}\"
    RESULT_VARIABLE test_result
-   COMMAND \"${PYTHON_EXECUTABLE}\" \"${args_PYTHON_DRIVER}\" ${args_DRIVER_CMD_LINE_FLAGS} 
+   COMMAND \"${python_executable_cmake}\" \"${python_driver_cmake}\" ${args_DRIVER_CMD_LINE_FLAGS} 
    WORKING_DIRECTORY \"${firmware_build_dir}\"
 )
 
