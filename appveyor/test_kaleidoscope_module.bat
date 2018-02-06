@@ -46,7 +46,7 @@ C:\msys64\mingw64\bin\ninja.exe --version
    "-DBoost_PYTHON_3_LIBRARY_RELEASE=%python_so_path%" ^
    "-DBoost_PYTHON_3_LIBRARY=%python_so_path%" ^
    "-DPYTHON_EXECUTABLE=%python_executable%" ^
-   %leidokos_testing_dir%
+   %leidokos_testing_dir% || exit /b 1
 
-%cmake_executable% --build .
-%ctest_executable% --output-on-failure
+%cmake_executable% --build . || exit /b 1
+%ctest_executable% --output-on-failure || exit /b 1
