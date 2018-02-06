@@ -4,6 +4,7 @@ C:\msys64\usr\bin\pacman --noconfirm -S mingw-w64-x86_64-cmake
 C:\msys64\usr\bin\pacman --noconfirm -S mingw-w64-x86_64-python3
 C:\msys64\usr\bin\pacman --noconfirm -S mingw-w64-x86_64-python3-pip
 C:\msys64\usr\bin\pacman --noconfirm -S mingw-w64-x86_64-boost
+C:\msys64\usr\bin\pacman --noconfirm -S mingw-w64-x86_64-ninja
 
 C:\msys64\mingw64\bin\python3.exe "C:\msys64\mingw64\bin\pip3-script.py" install pyyaml
 

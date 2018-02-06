@@ -39,6 +39,7 @@ set CC=C:\msys64\usr\bin\gcc.exe
 set CXX=C:\msys64\usr\bin\g++.exe
 
 %cmake_executable% ^
+   -G Ninja ^
    "-DLEIDOKOS_TESTING_TARGET_URL=%module_git_url%" ^
    "-DLEIDOKOS_TESTING_TARGET_COMMIT=%git_branch%" ^
    "-DLEIDOKOS_TESTING_TARGET_REPO_IS_FIRMWARE_MODULE=TRUE" ^
