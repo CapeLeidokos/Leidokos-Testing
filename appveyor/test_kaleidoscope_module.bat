@@ -17,8 +17,8 @@ if %argC% gtr 1 (
    set git_branch="master"
 )
 
-set python_so_path=C:\msys64\usr\local\lib\libboost_python3.dll
-set python_executable=C:\msys64\usr\local\bin\python3.exe
+set python_so_path=C:\msys64\mingw64\bin\libboost_python3-mt.dll
+set python_executable=C:\msys64\mingw64\bin\python3.exe
 set cmake_executable=C:\msys64\usr\bin\cmake.exe
 set ctest_executable=C:\msys64\usr\bin\ctest.exe
 
