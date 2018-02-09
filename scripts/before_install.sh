@@ -19,7 +19,7 @@
 set -e
 set -o xtrace
 
-if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
+if [ "${TRAVIS_OS_NAME}" == "osx" ] || [[ "$OSTYPE" == "darwin"* ]]; then
 
 #    brew list
    brew install ccache
@@ -31,7 +31,7 @@ if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
    sudo -H pip3 install pyyaml
    sudo -H pip3 install sphinx
 
-else
+elif [ "${TRAVIS_OS_NAME}" == "linux" ] || [[ "$OSTYPE" == "linux-gnu" ]]; then
    sudo -H apt-get install -y \
       libboost-python-dev \
       cmake \
@@ -39,4 +39,23 @@ else
       python3-yaml
 
    sudo -H pip3 install sphinx
+elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
+   # package installation for msys2
+
+   #pacman -Ql mingw-w64-x86_64-python3
+   #pacman -Ql mingw-w64-x86_64-boost
+   pacman --noconfirm -S mingw-w64-x86_64-cmake
+   pacman --noconfirm -S mingw-w64-x86_64-python3
+   pacman --noconfirm -S mingw-w64-x86_64-python3-pip
+   pacman --noconfirm -S mingw-w64-x86_64-boost
+   pacman --noconfirm -S mingw-w64-x86_64-ninja
+   pacman --noconfirm -S mingw-w64-x86_64-gcc
+
+   python3 /mingw64/bin/pip3-script.py install pyyaml
+
+   # sphinx is only required to build the Leidokos-Python's API
+   # python3 /mingw64\bin\pip3-script.py install sphinx
+else
+	echo "Strange system ${OSTYPE} detected. Unable to setup."
+	exit 1
 fi
