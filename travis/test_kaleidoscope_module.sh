@@ -54,14 +54,15 @@ else
    git_branch="master"
 fi
 
-# if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
-# #    ls -l /usr/local/lib
+if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
 #    python_so_path="/usr/local/lib/libboost_python3.dylib"
 #    python_executable="/usr/local/bin/python3"
-# else
+     cmake_prefix_path="/usr/local"
+else
 #    python_so_path="/usr/lib/x86_64-linux-gnu/libboost_python-py34.so"
 #    python_executable="/usr/bin/python3"
-# fi
+     cmake_prefix_path="/usr"
+fi
 #    "-DBoost_PYTHON_LIBRARY_RELEASE=${python_so_path}" \
 #    "-DBoost_PYTHON_3_LIBRARY_RELEASE=${python_so_path}" \
 #    "-DBoost_PYTHON_3_LIBRARY=${python_so_path}" \
@@ -71,6 +72,7 @@ cmake \
    "-DLEIDOKOS_TESTING_TARGET_URL=${module_git_url}" \
    "-DLEIDOKOS_TESTING_TARGET_COMMIT=${git_branch}" \
    "-DLEIDOKOS_TESTING_TARGET_REPO_IS_FIRMWARE_MODULE=TRUE" \
+   "-D
    ${leidokos_testing_dir}
 
 cmake --build .
