@@ -72,7 +72,7 @@ cmake \
    "-DLEIDOKOS_TESTING_TARGET_URL=${module_git_url}" \
    "-DLEIDOKOS_TESTING_TARGET_COMMIT=${git_branch}" \
    "-DLEIDOKOS_TESTING_TARGET_REPO_IS_FIRMWARE_MODULE=TRUE" \
-   "-D
+   "-DCMAKE_PREFIX_PATH=${cmake_prefix_path}" \
    ${leidokos_testing_dir}
 
 cmake --build .
