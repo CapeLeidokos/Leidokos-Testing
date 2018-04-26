@@ -54,14 +54,14 @@ else
    git_branch="master"
 fi
 
-if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
-#    ls -l /usr/local/lib
-   python_so_path="/usr/local/lib/libboost_python3.dylib"
-   python_executable="/usr/local/bin/python3"
-else
-   python_so_path="/usr/lib/x86_64-linux-gnu/libboost_python-py34.so"
-   python_executable="/usr/bin/python3"
-fi
+# if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
+# #    ls -l /usr/local/lib
+#    python_so_path="/usr/local/lib/libboost_python3.dylib"
+#    python_executable="/usr/local/bin/python3"
+# else
+#    python_so_path="/usr/lib/x86_64-linux-gnu/libboost_python-py34.so"
+#    python_executable="/usr/bin/python3"
+# fi
 
 cmake \
    "-DLEIDOKOS_TESTING_TARGET_URL=${module_git_url}" \
