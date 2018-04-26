@@ -62,15 +62,15 @@ fi
 #    python_so_path="/usr/lib/x86_64-linux-gnu/libboost_python-py34.so"
 #    python_executable="/usr/bin/python3"
 # fi
+#    "-DBoost_PYTHON_LIBRARY_RELEASE=${python_so_path}" \
+#    "-DBoost_PYTHON_3_LIBRARY_RELEASE=${python_so_path}" \
+#    "-DBoost_PYTHON_3_LIBRARY=${python_so_path}" \
+#    "-DPYTHON_EXECUTABLE=${python_executable}" \
 
 cmake \
    "-DLEIDOKOS_TESTING_TARGET_URL=${module_git_url}" \
    "-DLEIDOKOS_TESTING_TARGET_COMMIT=${git_branch}" \
    "-DLEIDOKOS_TESTING_TARGET_REPO_IS_FIRMWARE_MODULE=TRUE" \
-   "-DBoost_PYTHON_LIBRARY_RELEASE=${python_so_path}" \
-   "-DBoost_PYTHON_3_LIBRARY_RELEASE=${python_so_path}" \
-   "-DBoost_PYTHON_3_LIBRARY=${python_so_path}" \
-   "-DPYTHON_EXECUTABLE=${python_executable}" \
    ${leidokos_testing_dir}
 
 cmake --build .
