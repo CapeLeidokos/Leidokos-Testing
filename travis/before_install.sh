@@ -23,7 +23,8 @@ if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
 
 #    brew list
    brew install ccache
-   brew install python3
+   #brew install python3
+   brew upgrade python
 #    brew install boost --with-python
 #    brew info boost-python
    brew install boost-python3
