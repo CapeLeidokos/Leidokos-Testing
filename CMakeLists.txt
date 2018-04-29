@@ -662,35 +662,37 @@ and an empty NAME has been provided.")
       endforeach()
    endif()
    
+   # The following is now taken over by Leidokos-CMake
+   #
    # Kaleidoscope modules can define a setup script (setup_library.script.cmake)
    # that must be run 
    # once, before the firmware can be build (non-arduino conformant).
    # 
-   set(setup_library_script_basename "setup_library.script.cmake")
-   
-   # Search modules for setup scripts and execute those that are found.
-   #
-   file(GLOB library_dirs 
-      "${firmware_build_dir}/hardware/keyboardio/avr/libraries/*")
-   
-   foreach(lib_dir ${library_dirs})
-   
-      set(setup_script "${lib_dir}/${setup_library_script_basename}")
-      
-      if(EXISTS "${setup_script}")
-      
-         log("   Setting up firmware module ${lib_dir}")
-         
-         _execute_process(
-            "setup library in ${lib_dir}"
-            COMMAND "${CMAKE_COMMAND}"
-               "-DCMAKE_SOURCE_DIR=${lib_dir}"
-               "-DKALEIDOSCOPE_VIRTUAL_BUILD=TRUE"
-               -P "${setup_script}"
-            WORKING_DIRECTORY "${lib_dir}"
-         )
-      endif()
-   endforeach()
+#    set(setup_library_script_basename "setup_library.script.cmake")
+#    
+#    # Search modules for setup scripts and execute those that are found.
+#    #
+#    file(GLOB library_dirs 
+#       "${firmware_build_dir}/hardware/keyboardio/avr/libraries/*")
+#    
+#    foreach(lib_dir ${library_dirs})
+#    
+#       set(setup_script "${lib_dir}/${setup_library_script_basename}")
+#       
+#       if(EXISTS "${setup_script}")
+#       
+#          log("   Setting up firmware module ${lib_dir}")
+#          
+#          _execute_process(
+#             "setup library in ${lib_dir}"
+#             COMMAND "${CMAKE_COMMAND}"
+#                "-DCMAKE_SOURCE_DIR=${lib_dir}"
+#                "-DKALEIDOSCOPE_HOST_BUILD=TRUE"
+#                -P "${setup_script}"
+#             WORKING_DIRECTORY "${lib_dir}"
+#          )
+#       endif()
+#    endforeach()
    
    # To be portable, we use CMake scripts during the build phase.
    #
