@@ -34,7 +34,7 @@ set(log_file "${overall_log_file}")
 # Define some standard submodules from the Arduino-Boards repo
 # that are required for a minimum firmware build
 #
-set(default_firmware_modules "Kaleidoscope;Kaleidoscope-Ranges")
+set(default_firmware_modules "Kaleidoscope;Kaleidoscope-Ranges;Kaleidoscope-HIDAdaptor-KeyboardioHID")
 
 # We need git to clone remote repositories
 #
